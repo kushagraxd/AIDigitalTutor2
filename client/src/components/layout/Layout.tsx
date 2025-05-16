@@ -14,15 +14,26 @@ export default function Layout({ children }: LayoutProps) {
   const [location, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  // If not authenticated and not loading, redirect to login
+  // If not authenticated and not loading, redirect to login (only for certain routes)
   React.useEffect(() => {
-    if (!isLoading && !isAuthenticated && location !== "/login") {
+    if (!isLoading && !isAuthenticated && location !== "/login" && !location.startsWith("/api/")) {
       setLocation("/login");
     }
   }, [isAuthenticated, isLoading, location, setLocation]);
 
-  // If loading, show loading state
-  if (isLoading) {
+  // Limit loading indicator to 3 seconds maximum to prevent infinite loading
+  const [showLoading, setShowLoading] = useState(true);
+  
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowLoading(false);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // If loading and within time limit, show loading state
+  if (isLoading && showLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="text-center">
