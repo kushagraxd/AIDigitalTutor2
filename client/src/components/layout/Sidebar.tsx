@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Module, UserProgress } from "@shared/schema";
@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import ModuleProgress from "../modules/ModuleProgress";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -14,26 +15,75 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [location, setLocation] = useLocation();
+  const { isDemoMode } = useAuth();
+  const [demoProgress, setDemoProgress] = useState<UserProgress[]>([]);
+  const [demoHistory, setDemoHistory] = useState<any[]>([]);
   
   // Fetch modules
   const { data: modules, isLoading: modulesLoading } = useQuery<Module[]>({
     queryKey: ["/api/modules"],
   });
   
-  // Fetch user progress
-  const { data: progress, isLoading: progressLoading } = useQuery<UserProgress[]>({
+  // Generate demo data when in demo mode and modules are loaded
+  useEffect(() => {
+    if (isDemoMode && modules && modules.length > 0) {
+      // Create mock progress data
+      const mockProgress = modules.map((module, index) => ({
+        id: module.id,
+        userId: "demo-user-123",
+        moduleId: module.id,
+        percentComplete: Math.min(100, Math.floor(Math.random() * 100) + (index === 0 ? 30 : 0)),
+        completed: index === 0 ? false : Math.random() > 0.7,
+        lastAccessed: new Date().toISOString(),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }));
+      setDemoProgress(mockProgress);
+      
+      // Create mock chat history
+      const mockHistory = [
+        {
+          id: 1,
+          userId: "demo-user-123",
+          moduleId: modules[0].id,
+          question: "What is the best social media platform for B2B marketing?",
+          answer: "LinkedIn is typically the most effective for B2B marketing.",
+          confidenceScore: 95,
+          timestamp: new Date(Date.now() - 1000 * 60 * 30)
+        },
+        {
+          id: 2,
+          userId: "demo-user-123",
+          moduleId: modules[0].id,
+          question: "How do I measure ROI for digital marketing?",
+          answer: "Track conversions, analyze cost per acquisition, and monitor lifetime value.",
+          confidenceScore: 92,
+          timestamp: new Date(Date.now() - 1000 * 60 * 60)
+        }
+      ];
+      setDemoHistory(mockHistory);
+    }
+  }, [isDemoMode, modules]);
+  
+  // Fetch user progress (only when not in demo mode)
+  const { data: apiProgress, isLoading: progressLoading } = useQuery<UserProgress[]>({
     queryKey: ["/api/progress"],
-    enabled: !!modules,
+    enabled: !!modules && !isDemoMode,
   });
   
-  // Fetch chat history
-  const { data: history, isLoading: historyLoading } = useQuery({
+  // Fetch chat history (only when not in demo mode)
+  const { data: apiHistory, isLoading: historyLoading } = useQuery({
     queryKey: ["/api/history", { limit: 5 }],
+    enabled: !isDemoMode,
   });
+  
+  // Use demo data if in demo mode, otherwise use API data
+  const progress = isDemoMode ? demoProgress : apiProgress;
+  const history = isDemoMode ? demoHistory : apiHistory;
   
   // Find current module progress
   const findCurrentModule = () => {
-    if (!modules || !progress) return null;
+    if (!modules || !progress || progress.length === 0) return null;
     
     // Get current module ID from URL if available
     const currentPath = location;
@@ -43,7 +93,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     // If we have a current module ID, find it and its progress
     if (currentModuleId) {
       const currentModule = modules.find(m => m.id === currentModuleId);
-      const currentProgress = progress.find(p => p.moduleId === currentModuleId);
+      const currentProgress = Array.isArray(progress) 
+        ? progress.find(p => p.moduleId === currentModuleId)
+        : null;
       
       if (currentModule && currentProgress) {
         return {
@@ -54,9 +106,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
     
     // Otherwise find the most recently accessed module
-    const sortedProgress = [...(progress || [])].sort(
-      (a, b) => new Date(b.lastAccessed).getTime() - new Date(a.lastAccessed).getTime()
-    );
+    let sortedProgress: UserProgress[] = [];
+    if (Array.isArray(progress)) {
+      sortedProgress = [...progress].sort((a, b) => {
+        const dateA = a.lastAccessed ? new Date(a.lastAccessed).getTime() : 0;
+        const dateB = b.lastAccessed ? new Date(b.lastAccessed).getTime() : 0;
+        return dateB - dateA;
+      });
+    }
     
     if (sortedProgress.length > 0) {
       const recentModuleId = sortedProgress[0].moduleId;
@@ -74,7 +131,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (modules.length > 0) {
       return {
         module: modules[0],
-        progress: progress.find(p => p.moduleId === modules[0].id) || null
+        progress: Array.isArray(progress) 
+          ? progress.find(p => p.moduleId === modules[0].id) || null
+          : null
       };
     }
     
@@ -167,11 +226,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               History
             </h2>
             
-            {historyLoading ? (
+            {historyLoading && !isDemoMode ? (
               <div className="flex justify-center py-4">
                 <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
               </div>
-            ) : history && history.length > 0 ? (
+            ) : history && Array.isArray(history) && history.length > 0 ? (
               <ul className="space-y-1">
                 {history.map((item: any) => (
                   <li key={item.id}>

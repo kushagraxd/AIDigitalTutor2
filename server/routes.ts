@@ -115,8 +115,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // User Progress routes
-  app.get('/api/progress', isAuthenticated, async (req: any, res) => {
+  app.get('/api/progress', async (req: any, res) => {
     try {
+      // Check for demo mode
+      const isDemo = req.headers['x-demo-mode'] === 'true';
+      
+      if (isDemo) {
+        // Return empty array for demo mode - client will generate mock progress
+        return res.json([]);
+      }
+      
+      // Regular auth check for non-demo mode
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const userId = req.user.claims.sub;
       const progress = await storage.getUserProgress(userId);
       res.json(progress);
