@@ -11,6 +11,7 @@ import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ChatInterfaceProps {
   moduleId?: number;
@@ -31,6 +32,7 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [lastAiMessage, setLastAiMessage] = useState<{content: string, speak: string} | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
@@ -47,6 +49,27 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
     browserSupportsSpeechRecognition 
   } = useSpeechRecognition();
   
+  // Add a function to repeat the last AI message
+  const handleRepeatMessage = () => {
+    if (lastAiMessage && lastAiMessage.speak) {
+      // Stop any current speech
+      cancel();
+      // Start speaking the last AI message again
+      setTimeout(() => speak(lastAiMessage.speak), 100);
+      
+      toast({
+        title: "Repeating last message",
+        description: "The AI is repeating the last message.",
+      });
+    } else {
+      toast({
+        title: "Nothing to repeat",
+        description: "There is no previous AI message to repeat.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Add welcome message on first load
   useEffect(() => {
     if (messages.length === 0) {
@@ -70,6 +93,12 @@ What would you like to learn about today?`;
         markdown: true
       };
       setMessages([welcomeMessage]);
+      
+      // Set initial welcome message for repeat functionality
+      setLastAiMessage({
+        content: welcomeContent,
+        speak: "Welcome to the Digital Marketing module! I'm your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market. What would you like to learn about today?"
+      });
     }
   }, [module]);
   
@@ -97,6 +126,12 @@ What would you like to learn about today?`;
       };
       
       setMessages(prev => [...prev, aiMessage]);
+      
+      // Save last AI message for repeat functionality
+      setLastAiMessage({
+        content: data.reply,
+        speak: data.speak || data.reply
+      });
       
       // Speak the response if needed
       if (data.speak) {
@@ -242,15 +277,40 @@ What would you like to learn about today?`;
               />
             </div>
             <div className="flex items-center space-x-2 ml-3">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={handleVoiceInput}
-                disabled={sendMessageMutation.isPending}
-                aria-label="Voice input"
-              >
-                <span className="material-icons">mic</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={handleRepeatMessage}
+                    disabled={!lastAiMessage || speaking}
+                    aria-label="Repeat last message"
+                  >
+                    <span className="material-icons">replay</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Repeat last AI message</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={handleVoiceInput}
+                    disabled={sendMessageMutation.isPending}
+                    aria-label="Voice input"
+                  >
+                    <span className="material-icons">mic</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Voice input</p>
+                </TooltipContent>
+              </Tooltip>
+              
               <Button
                 size="icon"
                 onClick={handleSendMessage}
