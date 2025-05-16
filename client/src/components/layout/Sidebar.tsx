@@ -180,12 +180,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                       )}
                     >
                       <span className={cn(
-                        "material-icons mr-3 text-sm",
+                        "material-icons flex-shrink-0 mr-2 text-sm",
                         location === `/module/${module.id}` ? "text-primary" : "text-neutral-gray"
                       )}>
                         {module.icon || "description"}
                       </span>
-                      <span>{module.title}</span>
+                      <span className="truncate">{module.title}</span>
                     </button>
                   </li>
                 ))}
