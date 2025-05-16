@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { generateAIResponse } from "./openai";
 import { createKnowledgeBaseEntry } from "./knowledgeBase";
+import { populateKnowledgeBase } from "./knowledgeBaseData";
 import multer from "multer";
 import fs from "fs";
 import { insertModuleSchema, insertKnowledgeBaseEntrySchema } from "@shared/schema";
@@ -11,6 +12,9 @@ import { insertModuleSchema, insertKnowledgeBaseEntrySchema } from "@shared/sche
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup file upload middleware
   const upload = multer({ dest: 'uploads/' });
+  
+  // Initialize knowledge base with starter content
+  await populateKnowledgeBase(storage);
   
   // Auth middleware
   await setupAuth(app);

@@ -50,10 +50,22 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   // Add welcome message on first load
   useEffect(() => {
     if (messages.length === 0) {
+      const welcomeContent = `# Welcome to the ${module?.title || 'Digital Marketing'} module!
+
+I'm your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market.
+
+## How I can help you:
+- Ask me questions about ${module?.title || 'digital marketing'} topics
+- Request examples relevant to Indian businesses
+- Get help with practical applications
+- Explore case studies and success stories
+
+What would you like to learn about today?`;
+
       const welcomeMessage = {
         id: 'welcome',
         type: 'ai' as const,
-        content: `Welcome to the ${module?.title || 'Digital Marketing'} module! I'm your AI Digital Marketing Professor. How can I help you today?`,
+        content: welcomeContent,
         timestamp: new Date(),
         markdown: true
       };
