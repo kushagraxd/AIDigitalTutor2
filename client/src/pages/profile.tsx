@@ -18,9 +18,7 @@ const profileSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   mobileNumber: z.string().min(10, { message: "Mobile number must be at least 10 digits" }),
   profession: z.string().min(2, { message: "Profession must be at least 2 characters" }),
-  age: z.string().refine((val) => !isNaN(parseInt(val)) && parseInt(val) > 0, {
-    message: "Age must be a positive number",
-  }),
+  collegeOrUniversity: z.string().optional(),
   gender: z.enum(["male", "female", "other", "prefer_not_to_say"], {
     message: "Please select a gender",
   }),
@@ -48,8 +46,8 @@ export default function ProfilePage() {
       name: "",
       mobileNumber: "",
       profession: "",
-      age: "",
-      gender: "prefer_not_to_say",
+      collegeOrUniversity: "",
+      gender: "prefer_not_to_say", 
       interests: "",
       goals: "",
       educationLevel: "",
@@ -63,7 +61,7 @@ export default function ProfilePage() {
         name: profile.name || "",
         mobileNumber: profile.mobileNumber || "",
         profession: profile.profession || "",
-        age: profile.age ? profile.age.toString() : "",
+        collegeOrUniversity: profile.collegeOrUniversity || "",
         gender: profile.gender || "prefer_not_to_say",
         interests: profile.interests || "",
         goals: profile.goals || "",
@@ -189,12 +187,12 @@ export default function ProfilePage() {
 
                   <FormField
                     control={form.control}
-                    name="age"
+                    name="collegeOrUniversity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Age</FormLabel>
+                        <FormLabel>College/University</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter your age" type="number" {...field} />
+                          <Input placeholder="Enter your college or university" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
