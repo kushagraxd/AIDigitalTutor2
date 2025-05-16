@@ -59,7 +59,11 @@ function ModulePage() {
 function Router() {
   return (
     <Switch>
-      <Route path="/login" component={Login} />
+      <Route path="/login">
+        <Suspense fallback={<div className="flex-grow flex items-center justify-center">Loading authentication...</div>}>
+          {React.createElement(React.lazy(() => import('./pages/auth/login')))}
+        </Suspense>
+      </Route>
       <Route path="/" component={Home} />
       <Route path="/module/:id" component={ModulePage} />
       <Route path="/admin" component={Admin} />
