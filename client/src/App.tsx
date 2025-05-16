@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useRoute } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,9 +15,9 @@ import VoiceSettings from "@/components/chat/VoiceSettings";
 
 function ModulePage() {
   // Extract module ID from URL params using wouter's hooks
-  const [location] = useLocation();
-  const moduleId = parseInt(location.split('/module/')[1]);
-  console.log("Module page loaded with ID:", moduleId, "from location:", location);
+  const [match, params] = useRoute('/module/:id');
+  const moduleId = parseInt(params?.id || '0');
+  console.log("Module page loaded with ID:", moduleId, "match:", match, "params:", params);
   
   // Fetch module data
   const { data: module, isLoading } = useQuery({
