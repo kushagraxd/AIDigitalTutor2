@@ -57,7 +57,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/modules', isAuthenticated, async (req, res) => {
+  app.post('/api/modules', async (req, res) => {
     try {
       const validationResult = insertModuleSchema.safeParse(req.body);
       if (!validationResult.success) {

@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export default function Login() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -17,6 +18,11 @@ export default function Login() {
   
   const handleLogin = () => {
     window.location.href = "/api/login";
+  };
+  
+  const handleDemoLogin = () => {
+    localStorage.setItem('demoMode', 'true');
+    setLocation("/");
   };
   
   if (isLoading) {
@@ -40,7 +46,7 @@ export default function Login() {
         <CardContent className="pt-6">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-heading font-bold text-neutral-dark">AI Digital Marketing Professor</h1>
-            <p className="text-neutral-gray mt-2">Sign in to access your personalized learning experience</p>
+            <p className="text-neutral-gray mt-2">Access your personalized learning experience</p>
           </div>
           
           {/* Educational graphic */}
@@ -61,7 +67,26 @@ export default function Login() {
               <span className="material-icons mr-2">login</span>
               Sign In
             </Button>
-            <p className="text-sm text-center text-neutral-gray">
+            
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-neutral-lightest px-2 text-neutral-gray">or</span>
+              </div>
+            </div>
+            
+            <Button 
+              className="w-full py-3 px-4" 
+              variant="outline"
+              onClick={handleDemoLogin}
+            >
+              <span className="material-icons mr-2">play_circle</span>
+              Try Demo Mode
+            </Button>
+            
+            <p className="text-sm text-center text-neutral-gray mt-4">
               Learn digital marketing with an AI professor customized to your needs and learning style.
             </p>
           </div>
