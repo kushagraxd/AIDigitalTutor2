@@ -14,9 +14,10 @@ import ModuleHeader from "@/components/modules/ModuleHeader";
 import VoiceSettings from "@/components/chat/VoiceSettings";
 
 function ModulePage() {
-  // Extract module ID from URL
-  const path = window.location.pathname;
-  const moduleId = parseInt(path.split('/module/')[1]);
+  // Extract module ID from URL params using wouter's hooks
+  const [location] = useLocation();
+  const moduleId = parseInt(location.split('/module/')[1]);
+  console.log("Module page loaded with ID:", moduleId, "from location:", location);
   
   // Fetch module data
   const { data: module, isLoading } = useQuery({
@@ -48,8 +49,8 @@ function ModulePage() {
   
   return (
     <>
-      <ModuleHeader module={module} />
-      <ChatInterface moduleId={moduleId} module={module} />
+      <ModuleHeader module={module as any} />
+      <ChatInterface moduleId={moduleId} module={module as any} />
     </>
   );
 }
@@ -59,9 +60,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/" component={Home} />
-      <Route path="/module/:id">
-        <ModulePage />
-      </Route>
+      <Route path="/module/:id" component={ModulePage} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

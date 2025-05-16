@@ -55,7 +55,10 @@ export default function ModuleCard({ module, progress }: ModuleCardProps) {
       <CardFooter className="pt-0">
         <Button 
           className="w-full" 
-          onClick={() => setLocation(`/module/${module.id}`)}
+          onClick={() => {
+            console.log(`Navigating to module: ${module.id}`);
+            setLocation(`/module/${module.id}`);
+          }}
         >
           {percentComplete > 0 ? "Continue Learning" : "Start Learning"}
         </Button>
