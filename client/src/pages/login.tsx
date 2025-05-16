@@ -20,10 +20,7 @@ export default function Login() {
     window.location.href = "/api/login";
   };
   
-  const handleDemoLogin = () => {
-    localStorage.setItem('demoMode', 'true');
-    setLocation("/");
-  };
+  // Demo login removed
   
   if (isLoading) {
     return (
@@ -68,23 +65,9 @@ export default function Login() {
               Sign In
             </Button>
             
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-neutral-lightest px-2 text-neutral-gray">or</span>
-              </div>
-            </div>
-            
-            <Button 
-              className="w-full py-3 px-4" 
-              variant="outline"
-              onClick={handleDemoLogin}
-            >
-              <span className="material-icons mr-2">play_circle</span>
-              Try Demo Mode
-            </Button>
+            <p className="text-sm text-center text-neutral-gray mt-4 mb-2">
+              Sign in with your Replit account to access your personalized AI professor.
+            </p>
             
             <p className="text-sm text-center text-neutral-gray mt-4">
               Learn digital marketing with an AI professor customized to your needs and learning style.
