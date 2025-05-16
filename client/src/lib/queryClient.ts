@@ -1,7 +1,10 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
+  // Check if in demo mode - don't throw error for 401 responses in demo mode
+  const isDemoMode = localStorage.getItem('demoMode') === 'true';
+  
+  if (!res.ok && !(isDemoMode && res.status === 401)) {
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }

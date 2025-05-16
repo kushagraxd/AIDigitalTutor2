@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Module, UserProgress } from "@shared/schema";
@@ -6,19 +6,38 @@ import { useAuth } from "@/hooks/useAuth";
 import ModuleCard from "@/components/modules/ModuleCard";
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, isDemoMode } = useAuth();
   const [_, setLocation] = useLocation();
+  const [demoProgress, setDemoProgress] = useState<UserProgress[]>([]);
   
   // Fetch modules
   const { data: modules, isLoading: modulesLoading } = useQuery<Module[]>({
     queryKey: ["/api/modules"],
   });
   
-  // Fetch user progress
-  const { data: progress, isLoading: progressLoading } = useQuery<UserProgress[]>({
+  // Generate demo progress when in demo mode and modules are loaded
+  useEffect(() => {
+    if (isDemoMode && modules && modules.length > 0) {
+      const mockProgress: UserProgress[] = modules.map((module) => ({
+        userId: "demo-user-123",
+        moduleId: module.id,
+        percentComplete: Math.floor(Math.random() * 100),
+        completed: Math.random() > 0.7,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }));
+      setDemoProgress(mockProgress);
+    }
+  }, [isDemoMode, modules]);
+  
+  // Fetch user progress (only when not in demo mode)
+  const { data: apiProgress, isLoading: progressLoading } = useQuery<UserProgress[]>({
     queryKey: ["/api/progress"],
-    enabled: !!modules,
+    enabled: !!modules && !isDemoMode,
   });
+  
+  // Use demo progress if in demo mode, otherwise use API progress
+  const progress = isDemoMode ? demoProgress : apiProgress;
   
   const isLoading = modulesLoading || progressLoading;
   
