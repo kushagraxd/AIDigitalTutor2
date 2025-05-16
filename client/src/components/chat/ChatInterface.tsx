@@ -10,6 +10,7 @@ import VoiceModal from "./VoiceModal";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ChatInterfaceProps {
   moduleId?: number;
@@ -34,6 +35,7 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { isDemoMode } = useAuth();
   
   const { speak, cancel, speaking } = useSpeechSynthesis();
   const { 

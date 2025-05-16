@@ -30,7 +30,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Module routes
   app.get('/api/modules', async (_req, res) => {
     try {
-      const modules = await storage.getModules();
+      let modules = await storage.getModules();
+      
+      // If no modules exist yet, create sample modules for demonstration
+      if (modules.length === 0) {
+        const sampleModules = [
+          {
+            title: "Introduction to Digital Marketing",
+            description: "Learn the fundamentals of digital marketing and its key concepts.",
+            icon: "school",
+            estimatedHours: 3,
+            order: 1
+          },
+          {
+            title: "Social Media Marketing",
+            description: "Master social media platforms to engage audiences and build brands.",
+            icon: "groups",
+            estimatedHours: 5,
+            order: 2
+          },
+          {
+            title: "Search Engine Optimization",
+            description: "Optimize your website for better search engine rankings and visibility.",
+            icon: "search",
+            estimatedHours: 4,
+            order: 3
+          },
+          {
+            title: "Content Marketing Strategies",
+            description: "Create compelling content that attracts and converts your target audience.",
+            icon: "edit_document",
+            estimatedHours: 4,
+            order: 4
+          }
+        ];
+        
+        for (const moduleData of sampleModules) {
+          await storage.createModule(moduleData);
+        }
+        
+        // Fetch the newly created modules
+        modules = await storage.getModules();
+      }
+      
       res.json(modules);
     } catch (error) {
       console.error("Error fetching modules:", error);
@@ -133,9 +175,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Professor routes
-  app.post('/api/ai/chat', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ai/chat', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const isDemo = req.headers['x-demo-mode'] === 'true';
+      const userId = isDemo ? 'demo-user-123' : req.user?.claims?.sub;
+      
+      if (!isDemo && !userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const { question, moduleId, context } = req.body;
       
       if (!question || typeof question !== 'string') {
@@ -149,8 +197,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         context
       );
       
-      // Save chat history if needed
-      if (aiResponse.reply) {
+      // Save chat history if needed and not in demo mode
+      if (!isDemo && aiResponse.reply) {
         await storage.createChatHistory({
           userId,
           moduleId: moduleId ? parseInt(moduleId) : null,
