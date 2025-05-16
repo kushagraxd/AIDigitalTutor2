@@ -11,6 +11,7 @@ import Layout from "@/components/layout/Layout";
 import { useQuery } from "@tanstack/react-query";
 import ChatInterface from "@/components/chat/ChatInterface";
 import ModuleHeader from "@/components/modules/ModuleHeader";
+import VoiceSettings from "@/components/chat/VoiceSettings";
 
 function ModulePage() {
   // Extract module ID from URL
@@ -71,6 +72,8 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        {/* Initialize the Indian female voice */}
+        <VoiceSettings />
         <Layout>
           <Router />
         </Layout>

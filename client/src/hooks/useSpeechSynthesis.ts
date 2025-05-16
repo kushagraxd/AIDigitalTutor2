@@ -40,16 +40,30 @@ export const useSpeechSynthesis = (initialOptions: SpeechSynthesisOptions = {}):
         
         // Set default voice if not already set
         if (!options.voice) {
-          // Try to find a female English voice as default
+          // Try to find an Indian female voice first (looking for Hindi or Indian English voices)
+          const indianFemaleVoice = voiceOptions.find(
+            voice => (voice.lang.includes('hi-IN') || voice.lang.includes('en-IN')) && 
+                    (voice.name.includes('Female') || voice.name.includes('female') || 
+                     voice.name.includes('Woman') || voice.name.includes('woman'))
+          );
+          
+          // Next try to find any Indian voice
+          const indianVoice = voiceOptions.find(
+            voice => voice.lang.includes('hi-IN') || voice.lang.includes('en-IN')
+          );
+          
+          // Then try any female English voice
           const femaleEnglishVoice = voiceOptions.find(
-            voice => voice.lang.includes('en') && voice.name.includes('Female')
+            voice => voice.lang.includes('en') && 
+                    (voice.name.includes('Female') || voice.name.includes('female') || 
+                     voice.name.includes('Woman') || voice.name.includes('woman'))
           );
           
           // Otherwise find any English voice
           const englishVoice = voiceOptions.find(voice => voice.lang.includes('en'));
           
-          // Otherwise use the first voice
-          const defaultVoice = femaleEnglishVoice || englishVoice || voiceOptions[0];
+          // Use the best match we could find
+          const defaultVoice = indianFemaleVoice || indianVoice || femaleEnglishVoice || englishVoice || voiceOptions[0];
           
           setOptions(prev => ({ ...prev, voice: defaultVoice }));
         }
