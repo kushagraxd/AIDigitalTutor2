@@ -57,32 +57,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (modules.length === 0) {
         const sampleModules = [
           {
-            title: "Introduction to Digital Marketing",
-            description: "Learn the fundamentals of digital marketing and its key concepts.",
+            title: "Introduction to Digital Media Communication",
+            description: "Explore the evolution of digital media, its impact on the Indian digital revolution, and understand the digital consumer in both global and Indian landscapes.",
             icon: "school",
-            estimatedHours: 3,
+            estimatedHours: 4,
             order: 1
           },
           {
-            title: "Social Media Marketing",
-            description: "Master social media platforms to engage audiences and build brands.",
-            icon: "groups",
-            estimatedHours: 5,
+            title: "Digital Platforms and Terminologies",
+            description: "Learn about various digital media platforms, terminologies, and compare popular platforms in India with global usage statistics.",
+            icon: "language",
+            estimatedHours: 3,
             order: 2
           },
           {
-            title: "Search Engine Optimization",
-            description: "Optimize your website for better search engine rankings and visibility.",
-            icon: "search",
-            estimatedHours: 4,
+            title: "Content Creation and Development",
+            description: "Master the art of crafting messages for digital audiences, understand the importance of visuals, and learn best practices for digital content.",
+            icon: "edit_document",
+            estimatedHours: 5,
             order: 3
           },
           {
-            title: "Content Marketing Strategies",
-            description: "Create compelling content that attracts and converts your target audience.",
-            icon: "edit_document",
+            title: "Digital Media Planning Strategy",
+            description: "Set effective goals and objectives, learn target audience segmentation specific to India, and understand platform selection and budget allocation.",
+            icon: "campaign",
             estimatedHours: 4,
             order: 4
+          },
+          {
+            title: "Performance Marketing",
+            description: "Dive into audience targeting, segmentation, buyer personas, research tools, and understanding the consumer journey in digital marketing.",
+            icon: "bar_chart",
+            estimatedHours: 6,
+            order: 5
+          },
+          {
+            title: "Email Marketing Essentials",
+            description: "Learn about building email lists, campaign types, crafting effective emails, automation, metrics, compliance, and integration with other channels.",
+            icon: "email",
+            estimatedHours: 4,
+            order: 6
+          },
+          {
+            title: "Programmatic Advertising Fundamentals",
+            description: "Understand programmatic advertising, its components, types of buys, targeting capabilities, creative formats, measurement, and platforms.",
+            icon: "ads_click",
+            estimatedHours: 5,
+            order: 7
+          },
+          {
+            title: "Campaign Creation on Google",
+            description: "Master Google Ads, keyword research for the Indian market, bidding strategies, budget management, and campaign optimization.",
+            icon: "search",
+            estimatedHours: 5,
+            order: 8
+          },
+          {
+            title: "Campaign Creation on Facebook",
+            description: "Learn Facebook's advertising ecosystem, craft compelling ads, understand audience selection for the Indian market, and interpret A/B testing results.",
+            icon: "groups",
+            estimatedHours: 5,
+            order: 9
+          },
+          {
+            title: "Digital Marketing Strategy",
+            description: "Build comprehensive digital strategies, integrate offline and online marketing in India, leverage local events, and implement global insights.",
+            icon: "insights",
+            estimatedHours: 6,
+            order: 10
+          },
+          {
+            title: "Digital Media Analytics",
+            description: "Understand the importance of data in decision making, learn analytics tools, interpret key metrics, and study success cases from India and globally.",
+            icon: "analytics",
+            estimatedHours: 5,
+            order: 11
+          },
+          {
+            title: "Future of Digital Marketing in India",
+            description: "Explore predictions for the next decade, emerging technologies like AR, VR, and AI in marketing, and prepare for adapting to industry changes.",
+            icon: "trending_up",
+            estimatedHours: 3,
+            order: 12
           }
         ];
         
