@@ -16,8 +16,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
+      // Check for demo mode in headers
+      const isDemo = req.headers['x-demo-mode'] === 'true';
+      
+      if (isDemo) {
+        // Return a mock user for demo mode
+        return res.json({
+          id: "demo-user-123",
+          email: "demo@example.com",
+          firstName: "Demo",
+          lastName: "User",
+          profileImageUrl: "https://ui-avatars.com/api/?name=Demo+User&background=0D8ABC&color=fff",
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+      
+      // Regular authentication check for non-demo mode
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       res.json(user);
@@ -139,8 +160,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/progress/:moduleId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/progress/:moduleId', async (req: any, res) => {
     try {
+      // Check for demo mode
+      const isDemo = req.headers['x-demo-mode'] === 'true';
+      
+      if (isDemo) {
+        const moduleId = parseInt(req.params.moduleId);
+        
+        if (isNaN(moduleId)) {
+          return res.status(400).json({ message: "Invalid module ID" });
+        }
+        
+        // Return mock progress for demo mode
+        return res.json({
+          id: moduleId,
+          userId: "demo-user-123",
+          moduleId: moduleId,
+          percentComplete: Math.min(100, Math.floor(Math.random() * 100) + (moduleId === 1 ? 30 : 0)),
+          completed: moduleId === 1 ? false : Math.random() > 0.7,
+          lastAccessed: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+      
+      // Regular authentication check
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const userId = req.user.claims.sub;
       const moduleId = parseInt(req.params.moduleId);
       
@@ -230,8 +279,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Chat History routes
-  app.get('/api/history', isAuthenticated, async (req: any, res) => {
+  app.get('/api/history', async (req: any, res) => {
     try {
+      // Check for demo mode
+      const isDemo = req.headers['x-demo-mode'] === 'true';
+      
+      if (isDemo) {
+        // Return mock chat history for demo mode
+        return res.json([
+          {
+            id: 1,
+            userId: "demo-user-123",
+            moduleId: 1,
+            question: "What is the best social media platform for B2B marketing?",
+            answer: "LinkedIn is typically the most effective for B2B marketing as it's business-oriented.",
+            confidenceScore: 95,
+            source: "Digital Marketing Basics",
+            timestamp: new Date(Date.now() - 1000 * 60 * 30)
+          },
+          {
+            id: 2,
+            userId: "demo-user-123",
+            moduleId: 1,
+            question: "How do I measure ROI for digital marketing?",
+            answer: "Track conversions, analyze cost per acquisition, and monitor lifetime value.",
+            confidenceScore: 92,
+            source: "Advanced Analytics",
+            timestamp: new Date(Date.now() - 1000 * 60 * 60)
+          }
+        ]);
+      }
+      
+      // Regular authentication check
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const userId = req.user.claims.sub;
       const limit = req.query.limit ? parseInt(req.query.limit) : 10;
       
@@ -243,15 +326,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/history/:moduleId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/history/:moduleId', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check for demo mode
+      const isDemo = req.headers['x-demo-mode'] === 'true';
       const moduleId = parseInt(req.params.moduleId);
-      const limit = req.query.limit ? parseInt(req.query.limit) : 10;
       
       if (isNaN(moduleId)) {
         return res.status(400).json({ message: "Invalid module ID" });
       }
+      
+      if (isDemo) {
+        // Return mock module-specific chat history for demo mode
+        return res.json([
+          {
+            id: 1,
+            userId: "demo-user-123",
+            moduleId: moduleId,
+            question: "What are the key metrics for " + (moduleId === 1 ? "digital marketing" : "social media marketing") + "?",
+            answer: moduleId === 1 
+              ? "Key digital marketing metrics include conversion rate, customer acquisition cost (CAC), return on ad spend (ROAS), click-through rate (CTR), and customer lifetime value (CLV)."
+              : "Key social media metrics include engagement rate, reach, impressions, share of voice, and conversion rate.",
+            confidenceScore: 95,
+            source: moduleId === 1 ? "Digital Marketing Basics" : "Social Media Marketing Guide",
+            timestamp: new Date(Date.now() - 1000 * 60 * 30)
+          },
+          {
+            id: 2,
+            userId: "demo-user-123",
+            moduleId: moduleId,
+            question: "How often should I post on social media?",
+            answer: "Posting frequency depends on the platform. For LinkedIn, 1-2 times per week is optimal. For Twitter, 3-5 times daily can be effective. For Instagram, 1-2 posts per day works well. Facebook typically performs best with 3-5 posts per week.",
+            confidenceScore: 92,
+            source: "Social Media Best Practices",
+            timestamp: new Date(Date.now() - 1000 * 60 * 60)
+          }
+        ]);
+      }
+      
+      // Regular authentication check
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const limit = req.query.limit ? parseInt(req.query.limit) : 10;
       
       const history = await storage.getChatHistoryByUserAndModule(userId, moduleId, limit);
       res.json(history);
