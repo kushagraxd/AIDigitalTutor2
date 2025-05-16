@@ -1,7 +1,6 @@
 import React from "react";
 import { useLocation } from "wouter";
 import { User } from "@shared/schema";
-import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   DropdownMenu, 
@@ -11,8 +10,6 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 interface TopNavBarProps {
   user?: User;
@@ -21,7 +18,6 @@ interface TopNavBarProps {
 
 export default function TopNavBar({ user, toggleSidebar }: TopNavBarProps) {
   const [location, setLocation] = useLocation();
-  const { isDemoMode, toggleDemoMode } = useAuth();
   
   const handleLogout = () => {
     window.location.href = "/api/logout";
@@ -55,24 +51,12 @@ export default function TopNavBar({ user, toggleSidebar }: TopNavBarProps) {
         </div>
         
         <div className="flex items-center space-x-4">
-          {/* Demo Mode Toggle */}
-          <div className="hidden md:flex items-center space-x-2 mr-2">
-            <Label htmlFor="demo-mode" className={`text-sm ${isDemoMode ? 'font-medium text-primary' : 'text-muted-foreground'}`}>
-              Demo Mode
-            </Label>
-            <Switch
-              id="demo-mode"
-              checked={isDemoMode}
-              onCheckedChange={toggleDemoMode}
-            />
-          </div>
-          
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.profileImageUrl} alt={user?.firstName || "User"} />
+                    <AvatarImage src={user?.profileImageUrl || undefined} alt={user?.firstName || "User"} />
                     <AvatarFallback>
                       {user?.firstName?.[0] || user?.email?.[0] || "U"}
                     </AvatarFallback>
@@ -102,13 +86,6 @@ export default function TopNavBar({ user, toggleSidebar }: TopNavBarProps) {
                   onClick={() => setLocation("/settings")}
                 >
                   Settings
-                </DropdownMenuItem>
-                {/* Demo Mode Toggle (Mobile) */}
-                <DropdownMenuItem 
-                  className="cursor-pointer md:hidden"
-                  onClick={toggleDemoMode}
-                >
-                  {isDemoMode ? 'Turn Off Demo Mode' : 'Turn On Demo Mode'}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>

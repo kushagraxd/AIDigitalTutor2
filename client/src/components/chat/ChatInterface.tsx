@@ -35,7 +35,7 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { isDemoMode } = useAuth();
+  const { user } = useAuth();
   
   const { speak, cancel, speaking } = useSpeechSynthesis();
   const { 
@@ -76,17 +76,6 @@ What would you like to learn about today?`;
   // Mutation for sending messages to AI
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      // For demo mode, we now use the knowledge base instead of simple placeholders
-      if (isDemoMode) {
-        // Create a response that uses the knowledge base
-        return apiRequest("POST", "/api/ai/chat", {
-          question: message,
-          moduleId: moduleId,
-          context: messages.slice(-5).map(m => `${m.type}: ${m.content}`).join('\n'),
-          isDemoMode: true
-        });
-      }
-      
       return apiRequest("POST", "/api/ai/chat", {
         question: message,
         moduleId: moduleId,

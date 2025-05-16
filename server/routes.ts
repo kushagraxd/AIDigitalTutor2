@@ -30,29 +30,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      // Check for demo mode in headers
-      const isDemo = req.headers['x-demo-mode'] === 'true';
-      
-      if (isDemo) {
-        // Return a mock user for demo mode
-        return res.json({
-          id: "demo-user-123",
-          email: "demo@example.com",
-          firstName: "Demo",
-          lastName: "User",
-          profileImageUrl: "https://ui-avatars.com/api/?name=Demo+User&background=0D8ABC&color=fff",
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-      }
-      
-      // Regular authentication check for non-demo mode
+      // Check if user is authenticated through Replit Auth
       if (!req.isAuthenticated()) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
       const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      
+      // Get or create user
+      let user = await storage.getUser(userId);
+      
+      // If user doesn't exist, create from claims
+      if (!user) {
+        try {
+          user = await storage.upsertUser({
+            id: userId,
+            email: req.user.claims.email,
+            firstName: req.user.claims.first_name,
+            lastName: req.user.claims.last_name,
+            profileImageUrl: req.user.claims.profile_image_url,
+          });
+        } catch (err) {
+          console.error("Error creating user from claims:", err);
+          return res.status(500).json({ message: "Failed to create user" });
+        }
+      }
+      
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -326,15 +329,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Professor routes
-  app.post('/api/ai/chat', async (req: any, res) => {
+  app.post('/api/ai/chat', isAuthenticated, async (req: any, res) => {
     try {
-      // Check if this is demo mode from request body or headers
-      const isDemo = req.body.isDemoMode === true || req.headers['x-demo-mode'] === 'true';
-      const userId = isDemo ? 'demo-user-123' : req.user?.claims?.sub;
-      
-      if (!isDemo && !userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const userId = req.user.claims.sub;
       
       const { question, moduleId, context } = req.body;
       
@@ -349,8 +346,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         context
       );
       
-      // Save chat history if needed and not in demo mode
-      if (!isDemo && aiResponse.reply) {
+      // Save chat history (no longer checking for demo mode)
+      if (aiResponse.reply) {
         await storage.createChatHistory({
           userId,
           moduleId: moduleId ? parseInt(moduleId) : null,
