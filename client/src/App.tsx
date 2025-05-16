@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import { Switch, Route, useRoute } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -62,7 +63,11 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/module/:id" component={ModulePage} />
       <Route path="/admin" component={Admin} />
-      <Route path="/profile" component={React.lazy(() => import('./pages/profile'))} />
+      <Route path="/profile">
+        <Suspense fallback={<div className="flex-grow flex items-center justify-center">Loading profile...</div>}>
+          {React.createElement(React.lazy(() => import('./pages/profile')))}
+        </Suspense>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
