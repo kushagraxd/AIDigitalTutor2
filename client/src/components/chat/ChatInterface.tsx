@@ -64,11 +64,18 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   // Mutation for sending messages to AI
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
+      const headers: Record<string, string> = {};
+      
+      // Add demo mode header if in demo mode
+      if (isDemoMode) {
+        headers['x-demo-mode'] = 'true';
+      }
+      
       return apiRequest("POST", "/api/ai/chat", {
         question: message,
         moduleId: moduleId,
         context: messages.slice(-5).map(m => `${m.type}: ${m.content}`).join('\n')
-      });
+      }, headers);
     },
     onSuccess: async (response) => {
       const data = await response.json();
