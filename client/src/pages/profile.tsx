@@ -123,17 +123,17 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container py-10">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-8">
+    <div className="container py-6 overflow-auto max-h-screen">
+      <div className="max-w-3xl mx-auto mb-20">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold">Your Profile</h1>
           <p className="text-neutral-gray mt-2">
             Update your personal information and preferences to improve your learning experience.
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
+        <Card className="mb-10">
+          <CardHeader className="pb-2">
             <CardTitle>Personal Information</CardTitle>
             <CardDescription>
               This information will help us personalize your learning experience.
