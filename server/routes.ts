@@ -6,6 +6,7 @@ import { generateAIResponse } from "./openai";
 import { createKnowledgeBaseEntry } from "./knowledgeBase";
 import { populateKnowledgeBase } from "./knowledgeBaseData";
 import { addIndiaMarketingKnowledge } from "./indiaMarketingKnowledge";
+import { addAllModules } from "./addModules";
 import multer from "multer";
 import fs from "fs";
 import { insertModuleSchema, insertKnowledgeBaseEntrySchema } from "@shared/schema";
@@ -19,6 +20,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Add India-specific digital marketing knowledge
   await addIndiaMarketingKnowledge(storage);
+  
+  // Add all course modules
+  await addAllModules();
   
   // Auth middleware
   await setupAuth(app);
