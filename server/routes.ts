@@ -103,7 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: req.body.name,
         mobileNumber: req.body.mobileNumber,
         profession: req.body.profession,
-        age: req.body.age ? parseInt(req.body.age) : null,
+        collegeOrUniversity: req.body.collegeOrUniversity,
         gender: req.body.gender,
         interests: req.body.interests,
         goals: req.body.goals,
