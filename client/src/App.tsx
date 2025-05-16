@@ -62,6 +62,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/module/:id" component={ModulePage} />
       <Route path="/admin" component={Admin} />
+      <Route path="/profile" component={React.lazy(() => import('./pages/profile'))} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -62,6 +62,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
+  
+  // Profile routes
+  app.get('/api/profile', async (req: any, res) => {
+    try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+  
+  app.post('/api/profile', async (req: any, res) => {
+    try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.claims.sub;
+      
+      // Get existing user data to preserve fields not updated by profile
+      const existingUser = await storage.getUser(userId);
+      
+      const userData = {
+        id: userId,
+        // Preserve existing data
+        email: existingUser?.email || req.user.claims.email,
+        firstName: existingUser?.firstName || req.user.claims.first_name,
+        lastName: existingUser?.lastName || req.user.claims.last_name,
+        profileImageUrl: existingUser?.profileImageUrl || req.user.claims.profile_image_url,
+        // Update profile data
+        name: req.body.name,
+        mobileNumber: req.body.mobileNumber,
+        profession: req.body.profession,
+        age: req.body.age ? parseInt(req.body.age) : null,
+        gender: req.body.gender,
+        interests: req.body.interests,
+        goals: req.body.goals,
+        educationLevel: req.body.educationLevel,
+      };
+      
+      const updatedUser = await storage.upsertUser(userData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
 
   // Module routes
   app.get('/api/modules', async (_req, res) => {
