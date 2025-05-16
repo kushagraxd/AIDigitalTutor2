@@ -12,35 +12,29 @@ export default function VoiceSettings() {
     // Log available voices for debugging
     console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
 
-    // Find Indian female voice
-    const indianFemaleVoice = voices.find(
-      voice => (voice.lang.includes('hi-IN') || voice.lang.includes('en-IN')) && 
+    // Find a female English voice
+    const femaleEnglishVoice = voices.find(
+      voice => voice.lang.includes('en-US') && 
               (voice.name.toLowerCase().includes('female') || 
                voice.name.toLowerCase().includes('woman'))
     );
 
-    // Find any Indian voice as fallback
-    const indianVoice = voices.find(
-      voice => voice.lang.includes('hi-IN') || voice.lang.includes('en-IN')
-    );
-
-    // Find any female voice as fallback
-    const femaleVoice = voices.find(
-      voice => voice.name.toLowerCase().includes('female') || 
-              voice.name.toLowerCase().includes('woman')
+    // Find any English voice as fallback
+    const englishVoice = voices.find(
+      voice => voice.lang.includes('en-US')
     );
 
     // Apply the best match
-    const selectedVoice = indianFemaleVoice || indianVoice || femaleVoice || voices[0];
+    const selectedVoice = femaleEnglishVoice || englishVoice || voices[0];
     
     if (selectedVoice) {
       console.log('Setting voice to:', selectedVoice.name, selectedVoice.lang);
       setOptions({
         voice: selectedVoice,
-        // Slightly slower rate for better comprehension
-        rate: 0.95,
-        // Slightly higher pitch for more feminine voice if needed
-        pitch: 1.05
+        // Default rate
+        rate: 1.0,
+        // Default pitch
+        pitch: 1.0
       });
       setIsVoiceSet(true);
     }
