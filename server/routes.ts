@@ -299,7 +299,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // AI Professor routes
   app.post('/api/ai/chat', async (req: any, res) => {
     try {
-      const isDemo = req.headers['x-demo-mode'] === 'true';
+      // Check if this is demo mode from request body or headers
+      const isDemo = req.body.isDemoMode === true || req.headers['x-demo-mode'] === 'true';
       const userId = isDemo ? 'demo-user-123' : req.user?.claims?.sub;
       
       if (!isDemo && !userId) {

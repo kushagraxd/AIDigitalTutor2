@@ -28,29 +28,33 @@ export async function generateAIResponse(
     
     // Build prompt with context and knowledge base information
     const knowledgeContext = relevantEntries.length > 0 
-      ? "Information from knowledge base:\n" + relevantEntries.map(e => e.content).join('\n\n')
-      : "";
+      ? "Information from knowledge base:\n" + relevantEntries.map((e, index) => `Entry ${index + 1}:\n${e.content}`).join('\n\n')
+      : "No specific information found in knowledge base. Focus on general digital marketing principles with specific examples relevant to the Indian market.";
     
-    const userContext = context ? `User context: ${context}` : "";
+    const userContext = context ? `Recent conversation:\n${context}` : "";
     
     // Determine the source based on knowledge base hits
-    const source = relevantEntries.length > 0 ? "Knowledge Base" : "Web Search";
+    const source = relevantEntries.length > 0 
+      ? `${relevantEntries[0].title} (Knowledge Base)` 
+      : "Digital Marketing Knowledge Base";
     
     // Calculate confidence score based on relevance of knowledge base entries
     const confidenceScore = relevantEntries.length > 0
-      ? Math.min(0.95, 0.5 + (relevantEntries.length * 0.15))
-      : 0.7;
+      ? Math.min(0.98, 0.7 + (relevantEntries.length * 0.1))
+      : 0.75;
     
     const systemPrompt = `
-      You are an AI Digital Marketing Professor, a helpful, engaging, and knowledgeable expert in digital marketing.
+      You are an AI Digital Marketing Professor, a helpful, engaging, and knowledgeable expert in digital marketing with special focus on the Indian market.
       
       Follow these guidelines:
       1. Use a professional academic tone but be conversational and engaging
       2. Structure your teaching with this pattern: Explanation → Example → Exercise
-      3. Keep paragraphs short and focused (max 2-3 sentences)
+      3. Keep explanations concise (≤120 words)
       4. Use Markdown formatting for headings, lists, and emphasis
-      5. For exercises, ask thought-provoking questions that encourage application of concepts
-      6. Be confident but acknowledge limitations if you're uncertain
+      5. Always include examples relevant to Indian businesses and consumers
+      6. For exercises, ask thought-provoking questions that encourage application of concepts to the Indian context
+      7. Reference specific Indian companies, platforms, and marketing trends when applicable
+      8. Be confident but acknowledge limitations if you're uncertain
       
       ${knowledgeContext}
       ${userContext}

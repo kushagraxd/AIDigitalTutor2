@@ -76,19 +76,14 @@ What would you like to learn about today?`;
   // Mutation for sending messages to AI
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      // For demo mode, we can simulate basic responses
+      // For demo mode, we now use the knowledge base instead of simple placeholders
       if (isDemoMode) {
-        // Create a mock response object that looks like a fetch Response
-        return new Response(JSON.stringify({
-          reply: `This is a demo response about ${module?.title || 'digital marketing'}. In a real implementation, this would connect to the OpenAI API with your content. Try asking about specific digital marketing concepts!`,
-          speak: `This is a demo response about digital marketing.`,
-          confidence: 0.95,
-          source: "Demo Mode"
-        }), {
-          status: 200,
-          headers: {
-            'Content-Type': 'application/json'
-          }
+        // Create a response that uses the knowledge base
+        return apiRequest("POST", "/api/ai/chat", {
+          question: message,
+          moduleId: moduleId,
+          context: messages.slice(-5).map(m => `${m.type}: ${m.content}`).join('\n'),
+          isDemoMode: true
         });
       }
       
