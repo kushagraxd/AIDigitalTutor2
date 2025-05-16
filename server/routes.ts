@@ -147,6 +147,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
             icon: "trending_up",
             estimatedHours: 3,
             order: 12
+          },
+          {
+            title: "Social Media Marketing for Indian Audiences",
+            description: "Learn strategies for engaging Indian audiences on social platforms, understanding regional preferences, and measuring campaign effectiveness.",
+            icon: "share",
+            estimatedHours: 4,
+            order: 13
+          },
+          {
+            title: "Mobile Marketing in India",
+            description: "Master mobile marketing techniques for the mobile-first Indian consumer, including app promotion, SMS marketing, and WhatsApp strategies.",
+            icon: "smartphone",
+            estimatedHours: 3,
+            order: 14
+          },
+          {
+            title: "Content Localization for Indian Markets",
+            description: "Develop multilingual content strategies for India's diverse linguistic landscape and create culturally relevant marketing materials.",
+            icon: "translate",
+            estimatedHours: 4,
+            order: 15
           }
         ];
         
