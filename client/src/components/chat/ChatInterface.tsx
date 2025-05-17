@@ -49,19 +49,27 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
     browserSupportsSpeechRecognition 
   } = useSpeechRecognition();
   
-  // Add a function to repeat the last AI message
+  // Function to repeat the last AI message
   const handleRepeatMessage = () => {
     if (lastAiMessage && lastAiMessage.speak) {
       // Stop any current speech
       cancel();
-      // Start speaking the last AI message again
-      setTimeout(() => speak(lastAiMessage.speak), 100);
       
-      toast({
-        title: "Repeating last message",
-        description: "The AI is repeating the last message.",
-      });
+      // Log for debugging
+      console.log("Repeating message:", lastAiMessage.speak);
+      
+      // Start speaking the last AI message again with a slight delay
+      setTimeout(() => {
+        speak(lastAiMessage.speak);
+        
+        toast({
+          title: "Repeating last message",
+          description: "The AI is repeating the last message.",
+        });
+      }, 200);
     } else {
+      console.log("No message to repeat:", lastAiMessage);
+      
       toast({
         title: "Nothing to repeat",
         description: "There is no previous AI message to repeat.",
@@ -128,15 +136,15 @@ What would you like to learn about today?`;
       setMessages(prev => [...prev, aiMessage]);
       
       // Save last AI message for repeat functionality
+      const speakText = data.speak || data.reply;
       setLastAiMessage({
         content: data.reply,
-        speak: data.speak || data.reply
+        speak: speakText
       });
       
-      // Speak the response if needed
-      if (data.speak) {
-        speak(data.speak);
-      }
+      // Speak the response
+      console.log("Speaking text:", speakText);
+      setTimeout(() => speak(speakText), 200);
       
       // Invalidate history queries
       queryClient.invalidateQueries({ queryKey: ['/api/history'] });

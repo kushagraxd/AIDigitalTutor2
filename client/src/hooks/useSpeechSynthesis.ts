@@ -37,20 +37,29 @@ export const useSpeechSynthesis = (initialOptions: SpeechSynthesisOptions = {}):
       
       if (voiceOptions.length > 0) {
         setVoices(voiceOptions);
+        console.log("Available voices:", voiceOptions.map(v => `${v.name} (${v.lang})`));
         
         // Set default voice if not already set
         if (!options.voice) {
-          // Try to find a female English voice as default
-          const femaleEnglishVoice = voiceOptions.find(
-            voice => voice.lang.includes('en') && voice.name.includes('Female')
+          // First try to find Samantha (a good quality voice on many systems)
+          const samanthaVoice = voiceOptions.find(
+            voice => voice.name.includes('Samantha')
           );
           
-          // Otherwise find any English voice
-          const englishVoice = voiceOptions.find(voice => voice.lang.includes('en'));
+          // Then try to find any US English voice
+          const usEnglishVoice = voiceOptions.find(
+            voice => voice.lang === 'en-US'
+          );
+          
+          // Then any English voice
+          const englishVoice = voiceOptions.find(
+            voice => voice.lang.includes('en')
+          );
           
           // Otherwise use the first voice
-          const defaultVoice = femaleEnglishVoice || englishVoice || voiceOptions[0];
+          const defaultVoice = samanthaVoice || usEnglishVoice || englishVoice || voiceOptions[0];
           
+          console.log("Setting voice to:", defaultVoice?.name, defaultVoice?.lang);
           setOptions(prev => ({ ...prev, voice: defaultVoice }));
         }
       }
@@ -66,24 +75,56 @@ export const useSpeechSynthesis = (initialOptions: SpeechSynthesisOptions = {}):
 
   // Function to speak text
   const speak = useCallback((text: string) => {
-    if (!browserSupportsSpeechSynthesis || !text) return;
+    if (!browserSupportsSpeechSynthesis || !text) {
+      console.log("Speech synthesis not supported or no text provided");
+      return;
+    }
 
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
     
-    // Apply options
-    if (options.voice) utterance.voice = options.voice;
-    if (options.rate) utterance.rate = options.rate;
-    if (options.pitch) utterance.pitch = options.pitch;
-    if (options.volume) utterance.volume = options.volume;
+    // Break longer text into sentences to improve speech synthesis reliability
+    // The Speech API can have issues with very long text
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    
+    console.log(`Speaking text (${sentences.length} sentences)`);
+    setSpeaking(true);
+    
+    // Function to speak each sentence with a small delay
+    const speakSentences = (index = 0) => {
+      if (index >= sentences.length) {
+        setSpeaking(false);
+        return;
+      }
+      
+      const sentence = sentences[index].trim();
+      if (!sentence) {
+        speakSentences(index + 1);
+        return;
+      }
+      
+      const utterance = new SpeechSynthesisUtterance(sentence);
+      
+      // Apply options
+      if (options.voice) utterance.voice = options.voice;
+      if (options.rate) utterance.rate = options.rate;
+      if (options.pitch) utterance.pitch = options.pitch;
+      if (options.volume) utterance.volume = options.volume;
 
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
+      utterance.onend = () => {
+        speakSentences(index + 1);
+      };
+      
+      utterance.onerror = (e) => {
+        console.error("Speech synthesis error:", e);
+        speakSentences(index + 1);
+      };
 
-    window.speechSynthesis.speak(utterance);
+      window.speechSynthesis.speak(utterance);
+    };
+    
+    // Start speaking the sentences
+    speakSentences();
   }, [browserSupportsSpeechSynthesis, options]);
 
   // Function to cancel speech
