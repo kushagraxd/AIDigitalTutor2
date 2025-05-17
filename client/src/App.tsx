@@ -111,7 +111,7 @@ function Router() {
         </Suspense>
       </Route>
       <Route path="/" component={Home} />
-      <Route path="/module/:id" component={ModulePage} />
+      <Route path="/modules/:id" component={ModulePage} />
       <Route path="/admin" component={Admin} />
       <Route path="/profile">
         <Suspense fallback={<div className="flex-grow flex items-center justify-center">Loading profile...</div>}>
