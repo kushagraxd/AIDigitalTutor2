@@ -49,10 +49,30 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
     }
   });
   
-  // Add welcome message on first load and initialize progress tracking
+  // Fetch existing chat history for this module
+  const { data: chatHistory } = useQuery({
+    queryKey: [`/api/history/${moduleId}`],
+    enabled: !!moduleId && !!user,
+  });
+
+  // Add welcome message on first load or load from chat history
   useEffect(() => {
-    if (messages.length === 0) {
-      const welcomeContent = `# Welcome to the ${module?.title || 'Digital Marketing'} module!
+    if (!messages.length) {
+      if (chatHistory && chatHistory.length > 0) {
+        // We have existing chat history, let's load it
+        const formattedMessages = chatHistory.map(entry => ({
+          id: entry.id.toString(),
+          type: entry.role as 'user' | 'ai',
+          content: entry.content,
+          timestamp: new Date(entry.createdAt),
+          markdown: entry.role === 'ai',
+          confidence: entry.role === 'ai' ? entry.confidence : undefined,
+          source: entry.role === 'ai' ? entry.source : undefined
+        }));
+        setMessages(formattedMessages);
+      } else {
+        // No history, show welcome message
+        const welcomeContent = `# Welcome to the ${module?.title || 'Digital Marketing'} module!
 
 I'm your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market.
 
@@ -62,27 +82,30 @@ I'm your AI Digital Marketing Professor, designed to help you understand digital
 - Get help with practical applications
 - Explore case studies and success stories
 
-What would you like to learn about today?`;
+After each topic, I'll check if you've understood the concept before moving on. Let's make your learning experience interactive and effective!
 
-      const welcomeMessage = {
-        id: 'welcome',
-        type: 'ai' as const,
-        content: welcomeContent,
-        timestamp: new Date(),
-        markdown: true
-      };
-      setMessages([welcomeMessage]);
-      
-      // Initialize module progress to at least 10% when a module is loaded
-      if (moduleId && user) {
-        updateProgressMutation.mutate({
-          moduleId,
-          percentComplete: 10,
-          completed: false
-        });
+What specific aspect of ${module?.title || 'digital marketing'} would you like to explore first?`;
+
+        const welcomeMessage = {
+          id: 'welcome',
+          type: 'ai' as const,
+          content: welcomeContent,
+          timestamp: new Date(),
+          markdown: true
+        };
+        setMessages([welcomeMessage]);
+        
+        // Initialize module progress to at least 10% when a module is loaded
+        if (moduleId && user) {
+          updateProgressMutation.mutate({
+            moduleId,
+            percentComplete: 10,
+            completed: false
+          });
+        }
       }
     }
-  }, [module, moduleId, user, messages.length, updateProgressMutation]);
+  }, [module, moduleId, user, messages.length, updateProgressMutation, chatHistory]);
   
   // Mutation for sending messages to AI
   const sendMessageMutation = useMutation({
