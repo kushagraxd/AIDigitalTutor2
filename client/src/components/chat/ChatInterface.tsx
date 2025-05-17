@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { Module } from "@shared/schema";
+import { Module, ChatHistory } from "@shared/schema";
 import ChatMessage from "./ChatMessage";
 import { Send } from "lucide-react";
 
@@ -50,7 +50,7 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   });
   
   // Fetch existing chat history for this module
-  const { data: chatHistory } = useQuery({
+  const { data: chatHistory } = useQuery<ChatHistory[]>({
     queryKey: [`/api/history/${moduleId}`],
     enabled: !!moduleId && !!user,
   });
@@ -58,17 +58,31 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   // Add welcome message on first load or load from chat history
   useEffect(() => {
     if (!messages.length) {
-      if (chatHistory && chatHistory.length > 0) {
+      if (chatHistory && Array.isArray(chatHistory) && chatHistory.length > 0) {
         // We have existing chat history, let's load it
-        const formattedMessages = chatHistory.map(entry => ({
-          id: entry.id.toString(),
-          type: entry.role as 'user' | 'ai',
-          content: entry.content,
-          timestamp: new Date(entry.createdAt),
-          markdown: entry.role === 'ai',
-          confidence: entry.role === 'ai' ? entry.confidence : undefined,
-          source: entry.role === 'ai' ? entry.source : undefined
-        }));
+        const formattedMessages: Message[] = [];
+        
+        // Process each chat history entry into two messages (user question and AI answer)
+        for (const entry of chatHistory) {
+          // Add user question
+          formattedMessages.push({
+            id: `user-${entry.id}`,
+            type: 'user',
+            content: entry.question,
+            timestamp: new Date(entry.timestamp ?? Date.now()),
+          });
+          
+          // Add AI answer
+          formattedMessages.push({
+            id: `ai-${entry.id}`,
+            type: 'ai',
+            content: entry.answer,
+            timestamp: new Date(entry.timestamp ?? Date.now()),
+            markdown: true,
+            confidence: entry.confidenceScore ? Number(entry.confidenceScore) : undefined,
+            source: entry.source ? String(entry.source) : undefined
+          });
+        }
         setMessages(formattedMessages);
       } else {
         // No history, show welcome message
