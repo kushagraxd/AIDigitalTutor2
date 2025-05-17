@@ -83,19 +83,27 @@ export const useSpeechSynthesis = (initialOptions: SpeechSynthesisOptions = {}):
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
     
+    // Clean any potential "dot" issues from the text and prepare for speech
+    const cleanedText = text
+      .replace(/\.\s+/g, '. ') // Fix any "dot" issues by ensuring proper space after periods
+      .replace(/\s+\./g, '.') // Remove spaces before periods
+      .replace(/\s+,/g, ',') // Remove spaces before commas
+      .replace(/\.\./g, '.') // Replace double periods with single
+      .replace(/\bdot\b/gi, ''); // Remove standalone "dot" words
+      
     // Process text to add SSML-like improvements for better prosody
     // Even though most browsers don't support SSML directly, we can simulate
     // some effects with careful text manipulation
     
-    // Add slight pauses for commas, periods, etc.
-    const processedText = text
-      .replace(/\.\s+/g, '... ') // Longer pauses at end of sentences
-      .replace(/\!\s+/g, '! ... ') // Emphasis after exclamations
-      .replace(/\?\s+/g, '? ... ') // Pause after questions
-      .replace(/,\s+/g, ', ') // Short pauses for commas
-      .replace(/:\s+/g, ': ') // Pauses for colons
-      .replace(/\s-\s/g, ' - ') // Slight pause for hyphens
-      .replace(/(\d+)\./g, '$1... '); // Pauses after numbered lists
+    // Add natural pauses for commas, periods, etc. without pronouncing the word "dot"
+    const processedText = cleanedText
+      .replace(/\.\s+/g, '. <break time="0.5s"/> ') // Natural pauses at end of sentences
+      .replace(/\!\s+/g, '! <break time="0.6s"/> ') // Emphasis after exclamations
+      .replace(/\?\s+/g, '? <break time="0.6s"/> ') // Pause after questions
+      .replace(/,\s+/g, ', <break time="0.3s"/> ') // Short pauses for commas
+      .replace(/:\s+/g, ': <break time="0.4s"/> ') // Pauses for colons
+      .replace(/\s-\s/g, ' <break time="0.2s"/> - <break time="0.2s"/> ') // Slight pause for hyphens
+      .replace(/(\d+)\./g, '$1 <break time="0.3s"/> '); // Pauses after numbered lists
     
     // Break longer text into natural breath-like chunks
     // This is important for a natural cadence
@@ -149,31 +157,50 @@ export const useSpeechSynthesis = (initialOptions: SpeechSynthesisOptions = {}):
         return;
       }
       
-      const chunk = breathChunks[index].trim();
+      // Get the current chunk and process SSML-like tags
+      let chunk = breathChunks[index].trim();
       if (!chunk) {
         speakWithProsody(index + 1);
         return;
       }
       
+      // Process the chunk to handle SSML-like tags
+      // Replace SSML break tags with actual spaces for pauses
+      chunk = chunk.replace(/<break time="([\d.]+)s"\/>/g, (match, time) => {
+        const pauseLength = Math.round(parseFloat(time) * 5);
+        return ' '.repeat(pauseLength);
+      });
+      
+      // Remove any remaining tags
+      chunk = chunk.replace(/<[^>]+>/g, '');
+      
+      // Remove any remaining "dot" text that might be pronounced
+      chunk = chunk.replace(/\bdot\b/gi, '');
+      
       const utterance = new SpeechSynthesisUtterance(chunk);
       
       // Dynamically adjust rate for different sentence types to sound more natural
-      let chunkRate = options.rate || 1.0;
+      // Use a slightly slower default rate for more natural speech
+      let chunkRate = (options.rate || 0.9);
       
-      // Questions tend to be spoken a bit more slowly
+      // Questions tend to be spoken a bit more slowly with rising intonation
       if (chunk.endsWith('?')) {
-        chunkRate *= 0.9;
+        chunkRate *= 0.9; 
+        utterance.pitch = (options.pitch || 1) * 1.05; // Slightly higher pitch for questions
       }
       
-      // Exclamations often have more energy
+      // Exclamations often have more emphasis
       if (chunk.endsWith('!')) {
-        chunkRate *= 1.1;
+        chunkRate *= 0.95;
+        utterance.pitch = (options.pitch || 1) * 1.1; // Higher pitch for exclamations
       }
       
       // Apply options
       if (options.voice) utterance.voice = options.voice;
       utterance.rate = chunkRate;
-      if (options.pitch) utterance.pitch = options.pitch;
+      if (options.pitch && !chunk.endsWith('?') && !chunk.endsWith('!')) {
+        utterance.pitch = options.pitch;
+      }
       if (options.volume) utterance.volume = options.volume;
 
       utterance.onend = () => {
