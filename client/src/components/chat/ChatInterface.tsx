@@ -34,7 +34,6 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
-  const [lastProgressUpdate, setLastProgressUpdate] = useState<number>(0);
   
   // Define mutation for updating module progress
   const updateProgressMutation = useMutation({
@@ -47,74 +46,44 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
       if (moduleId) {
         queryClient.invalidateQueries({ queryKey: [`/api/progress/${moduleId}`] });
       }
-      console.log("Progress updated successfully");
     }
   });
   
   // Fetch existing chat history for this module
-  const { data: chatHistory, isLoading: isHistoryLoading } = useQuery<ChatHistory[]>({
+  const { data: chatHistory } = useQuery<ChatHistory[]>({
     queryKey: [`/api/history/${moduleId}`],
     enabled: !!moduleId && !!user,
   });
 
-  // Reset messages when moduleId changes to fix the module loading issue
+  // Add welcome message on first load or load from chat history
   useEffect(() => {
-    setMessages([]);
-    setLastProgressUpdate(0);
-  }, [moduleId]);
-
-  // Load chat history or welcome message
-  useEffect(() => {
-    // Only process if we have a valid module and are not already displaying messages for this module
-    if ((!messages.length || messages.length === 1) && !isHistoryLoading) {
-      if (chatHistory && Array.isArray(chatHistory) && chatHistory.length > 0) {
-        console.log("Loading chat history for module:", moduleId, "with", chatHistory.length, "entries");
-        
-        // We have existing chat history, let's load it
+    if (!messages.length) {
+      if (chatHistory && chatHistory.length > 0) {
+        // Convert chat history to message format
         const formattedMessages: Message[] = [];
-        
-        // Process each chat history entry into two messages (user question and AI answer)
         for (const entry of chatHistory) {
-          // Add user question - handle different field names
+          // Add user message
           formattedMessages.push({
             id: `user-${entry.id}`,
             type: 'user',
-            content: entry.question || "", // Use question field
-            timestamp: new Date(entry.timestamp ?? Date.now()),
+            content: entry.question,
+            timestamp: new Date(entry.timestamp ?? Date.now())
           });
           
-          // Add AI answer - handle different field names
+          // Add AI response
           formattedMessages.push({
             id: `ai-${entry.id}`,
             type: 'ai',
-            content: entry.answer || "", // Use answer field
+            content: entry.answer,
             timestamp: new Date(entry.timestamp ?? Date.now()),
             markdown: true,
             confidence: entry.confidenceScore ? Number(entry.confidenceScore) : undefined,
             source: entry.source ? String(entry.source) : undefined
           });
         }
-        
         setMessages(formattedMessages);
-        
-        // Update progress based on number of exchanges
-        if (moduleId && user) {
-          const aiMessageCount = formattedMessages.filter(m => m.type === 'ai').length;
-          const percentComplete = Math.min(100, aiMessageCount * 10);
-          
-          if (percentComplete > lastProgressUpdate) {
-            updateProgressMutation.mutate({
-              moduleId,
-              percentComplete: Math.max(10, percentComplete), // At least 10%
-              completed: percentComplete >= 100
-            });
-            setLastProgressUpdate(percentComplete);
-          }
-        }
       } else {
         // No history, show welcome message
-        console.log("No chat history found, showing welcome message for module:", moduleId);
-        
         const welcomeContent = `# Welcome to the ${module?.title || 'Digital Marketing'} module!
 
 I'm your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market.
@@ -136,7 +105,6 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
           timestamp: new Date(),
           markdown: true
         };
-        
         setMessages([welcomeMessage]);
         
         // Initialize module progress to at least 10% when a module is loaded
@@ -146,11 +114,10 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
             percentComplete: 10,
             completed: false
           });
-          setLastProgressUpdate(10);
         }
       }
     }
-  }, [chatHistory, isHistoryLoading, messages.length, module, moduleId, updateProgressMutation, user, lastProgressUpdate]);
+  }, [chatHistory, messages.length, module, moduleId, updateProgressMutation, user]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -197,16 +164,17 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
       
       // Send request to the API
       const response = await apiRequest("POST", "/api/chat", requestData);
+      const data = response;
       
-      // Parse AI response - ensure we handle the response data properly
+      // Parse AI response
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
         type: 'ai',
-        content: typeof response === 'object' && response.reply ? response.reply : String(response),
+        content: typeof data === 'object' && data.reply ? data.reply : String(data),
         timestamp: new Date(),
         markdown: true,
-        confidence: typeof response === 'object' ? response.confidence : undefined,
-        source: typeof response === 'object' ? response.source : undefined
+        confidence: typeof data === 'object' ? data.confidence : undefined,
+        source: typeof data === 'object' ? data.source : undefined
       };
       
       setMessages(prev => [...prev, aiMessage]);
@@ -225,19 +193,12 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
         const percentComplete = Math.min(100, aiMessageCount * 10);
         const completed = percentComplete >= 100;
         
-        // Update progress only if it has increased
-        if (percentComplete > lastProgressUpdate) {
-          updateProgressMutation.mutate({
-            moduleId,
-            percentComplete,
-            completed
-          });
-          setLastProgressUpdate(percentComplete);
-          
-          // Force refresh progress data in queries to update UI immediately
-          queryClient.invalidateQueries({ queryKey: [`/api/progress/${moduleId}`] });
-          queryClient.invalidateQueries({ queryKey: ['/api/progress'] });
-        }
+        // Update progress
+        updateProgressMutation.mutate({
+          moduleId,
+          percentComplete,
+          completed
+        });
       }
     } catch (error) {
       console.error("Error sending message:", error);
