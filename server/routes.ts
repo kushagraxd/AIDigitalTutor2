@@ -6,6 +6,7 @@ import { generateAIResponse } from "./openai";
 import { createKnowledgeBaseEntry } from "./knowledgeBase";
 import { populateKnowledgeBase } from "./knowledgeBaseData";
 import { addIndiaMarketingKnowledge } from "./indiaMarketingKnowledge";
+import { addDMA2025Knowledge } from "./dma2025Knowledge";
 import { addAllModules } from "./addModules";
 import multer from "multer";
 import fs from "fs";
