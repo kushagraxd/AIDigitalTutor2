@@ -117,7 +117,13 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
       
       // Start speaking the last AI message again with a slight delay
       setTimeout(() => {
-        speak(lastAiMessage.speak);
+        try {
+          // Try with Eleven Labs first
+          speakElevenLabs(lastAiMessage.speak);
+        } catch (error) {
+          // Fall back to browser speech
+          speakBrowser(lastAiMessage.speak);
+        }
         
         toast({
           title: "Repeating last message",
@@ -222,9 +228,16 @@ What would you like to learn about today?`;
         speak: speakText
       });
       
-      // Speak the response
+      // Speak the response using Eleven Labs (high quality) or browser (fallback)
       console.log("Speaking text:", speakText);
-      setTimeout(() => speak(speakText), 200);
+      try {
+        // First try with Eleven Labs for high-quality voice
+        setTimeout(() => speakElevenLabs(speakText), 200);
+      } catch (error) {
+        console.error("Error with Eleven Labs speech, falling back to browser:", error);
+        // Fallback to browser speech synthesis if Eleven Labs fails
+        setTimeout(() => speakBrowser(speakText), 200);
+      }
       
       // Invalidate history queries
       queryClient.invalidateQueries({ queryKey: ['/api/history'] });
