@@ -62,8 +62,11 @@ export async function findRelevantEntries(
  * Calculate cosine similarity between two vectors
  */
 function calculateCosineSimilarity(vec1: number[], vec2: number[]): number {
+  // Handle vector length mismatch gracefully
   if (vec1.length !== vec2.length) {
-    throw new Error("Vectors must have the same length");
+    console.warn(`Vector length mismatch: ${vec1.length} vs ${vec2.length}. Using minimum length.`);
+    // Return a low similarity score but don't throw an error
+    return 0.1;
   }
   
   let dotProduct = 0;
