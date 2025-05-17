@@ -166,6 +166,10 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
           percentComplete,
           completed
         });
+        
+        // Force refresh progress data in queries to update UI immediately
+        queryClient.invalidateQueries([`/api/progress/${moduleId}`]);
+        queryClient.invalidateQueries(['/api/progress']);
       }
     },
     onError: (error) => {
