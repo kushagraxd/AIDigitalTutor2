@@ -116,19 +116,20 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
       console.log("Repeating message:", lastAiMessage.speak);
       
       // Start speaking the last AI message again with a slight delay
-      setTimeout(() => {
-        try {
-          // Try with Eleven Labs first
-          speakElevenLabs(lastAiMessage.speak);
-        } catch (error) {
-          // Fall back to browser speech
-          speakBrowser(lastAiMessage.speak);
-        }
-        
+      setTimeout(async () => {
         toast({
           title: "Repeating last message",
           description: "The AI is repeating the last message.",
         });
+        
+        try {
+          // Try with Eleven Labs first
+          await speakElevenLabs(lastAiMessage.speak);
+        } catch (error) {
+          console.error("Error with Eleven Labs speech for repeat, falling back to browser:", error);
+          // Fall back to browser speech
+          speakBrowser(lastAiMessage.speak);
+        }
       }, 200);
     } else {
       console.log("No message to repeat:", lastAiMessage);
@@ -230,14 +231,18 @@ What would you like to learn about today?`;
       
       // Speak the response using Eleven Labs (high quality) or browser (fallback)
       console.log("Speaking text:", speakText);
-      try {
-        // First try with Eleven Labs for high-quality voice
-        setTimeout(() => speakElevenLabs(speakText), 200);
-      } catch (error) {
-        console.error("Error with Eleven Labs speech, falling back to browser:", error);
-        // Fallback to browser speech synthesis if Eleven Labs fails
-        setTimeout(() => speakBrowser(speakText), 200);
-      }
+      
+      // A properly async approach that catches errors from speakElevenLabs
+      setTimeout(async () => {
+        try {
+          // First try with Eleven Labs for high-quality voice
+          await speakElevenLabs(speakText);
+        } catch (error) {
+          console.error("Error with Eleven Labs speech, falling back to browser:", error);
+          // Fallback to browser speech synthesis if Eleven Labs fails
+          speakBrowser(speakText);
+        }
+      }, 200);
       
       // Invalidate history queries
       queryClient.invalidateQueries({ queryKey: ['/api/history'] });

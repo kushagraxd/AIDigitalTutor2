@@ -65,7 +65,9 @@ export const useElevenLabsSpeech = (options: UseElevenLabsSpeechOptions = {}) =>
 
   // Function to speak text
   const speak = async (text: string): Promise<void> => {
-    if (!text || !currentVoiceId) return;
+    if (!text || !currentVoiceId) {
+      throw new Error('Missing text or voice ID for speech synthesis');
+    }
     
     try {
       setIsLoading(true);
@@ -82,14 +84,27 @@ export const useElevenLabsSpeech = (options: UseElevenLabsSpeechOptions = {}) =>
         }
       }
       
+      console.log(`Requesting speech synthesis for ${text.length} characters with voice ID ${currentVoiceId}`);
+      
       // Make API request to get speech audio
       const response = await apiRequest('POST', '/api/tts', {
         text,
         voiceId: currentVoiceId,
       });
       
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server returned error: ${response.status} - ${errorText}`);
+      }
+      
       // Create URL for the audio blob
       const audioBlob = await response.blob();
+      if (audioBlob.size === 0) {
+        throw new Error('Received empty audio blob from server');
+      }
+      
+      console.log(`Received audio blob of size: ${audioBlob.size} bytes`);
+      
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
       
@@ -98,18 +113,25 @@ export const useElevenLabsSpeech = (options: UseElevenLabsSpeechOptions = {}) =>
       audioRef.current.onplay = () => setIsSpeaking(true);
       audioRef.current.onended = () => setIsSpeaking(false);
       audioRef.current.onpause = () => setIsSpeaking(false);
-      audioRef.current.onerror = () => {
+      audioRef.current.onerror = (e) => {
+        const error = e.currentTarget as HTMLAudioElement;
+        console.error('Audio playback error:', error.error);
         setIsSpeaking(false);
         toast({
-          title: 'Error',
-          description: 'Failed to play audio',
+          title: 'Playback Error',
+          description: `Failed to play audio: ${error.error?.message || 'Unknown error'}`,
           variant: 'destructive',
         });
       };
       
       // Play audio if autoPlay is enabled
       if (autoPlay) {
-        await audioRef.current.play();
+        try {
+          await audioRef.current.play();
+        } catch (playError) {
+          console.error('Error playing audio:', playError);
+          throw new Error(`Failed to play audio: ${playError.message}`);
+        }
       }
       
       setIsLoading(false);
@@ -118,9 +140,12 @@ export const useElevenLabsSpeech = (options: UseElevenLabsSpeechOptions = {}) =>
       setIsLoading(false);
       toast({
         title: 'Speech Generation Failed',
-        description: 'There was an error generating the speech audio.',
+        description: `${error.message || 'There was an error generating the speech audio.'}`,
         variant: 'destructive',
       });
+      
+      // Re-throw the error so the caller can handle it (e.g., fallback to browser speech)
+      throw error;
     }
   };
 
