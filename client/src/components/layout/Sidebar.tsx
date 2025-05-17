@@ -40,7 +40,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (!modules || modules.length === 0) return null;
     
     // Get current module ID from URL
-    const moduleIdMatch = location.match(/\/module\/(\d+)/);
+    const moduleIdMatch = location.match(/\/modules\/(\d+)/);
     const currentModuleId = moduleIdMatch ? parseInt(moduleIdMatch[1]) : null;
     
     // If we have a current module ID, find it
@@ -111,7 +111,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   key={module.id}
                   className={cn(
                     "w-full text-left px-3 py-2 text-sm rounded-md flex items-center",
-                    location === `/module/${module.id}` 
+                    location === `/modules/${module.id}` 
                       ? "bg-primary/10 text-primary font-medium" 
                       : "hover:bg-accent"
                   )}
