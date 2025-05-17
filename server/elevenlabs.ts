@@ -72,6 +72,12 @@ export async function generateSpeechAudio(
       return null;
     }
     
+    // Verify API key is available
+    if (!process.env.ELEVEN_LABS_API_KEY) {
+      log('Missing Eleven Labs API key', 'elevenlabs');
+      return null;
+    }
+    
     // Create a temporary file path for the audio (required by the SDK)
     const tempFilePath = `/tmp/speech-${Date.now()}.mp3`;
     
@@ -79,25 +85,43 @@ export async function generateSpeechAudio(
     log(`Generating speech for text (${cleanedText.length} chars)`, 'elevenlabs');
     
     // Generate speech using Eleven Labs
-    await elevenlabs.textToSpeech({
-      voiceId: voiceId, // Note the different parameter name (camelCase)
-      fileName: tempFilePath, // Required by the SDK
-      textInput: cleanedText, // Note the different parameter name
-      modelId: 'eleven_multilingual_v2', // Use the multilingual model for better quality
-      stability: 0.5,
-      similarityBoost: 0.75,
-      style: 0.1, // Lower value for more natural style
-      speakerBoost: true
-    });
-    
-    // Read the file into a buffer
-    const audioBuffer = await fs.readFile(tempFilePath);
-    
-    // Clean up the temporary file
-    await fs.unlink(tempFilePath).catch(() => {});
-    
-    return audioBuffer;
-  } catch (error) {
+    try {
+      log(`Using voice ID: ${voiceId}`, 'elevenlabs');
+      const result = await elevenlabs.textToSpeech({
+        voiceId: voiceId, // Note the different parameter name (camelCase)
+        fileName: tempFilePath, // Required by the SDK
+        textInput: cleanedText, // Note the different parameter name
+        modelId: 'eleven_multilingual_v2', // Use the multilingual model for better quality
+        stability: 0.5,
+        similarityBoost: 0.75,
+        speakerBoost: true
+      });
+      
+      log(`Speech generation result: ${JSON.stringify(result)}`, 'elevenlabs');
+      
+      // Check if the file was created
+      const fileExists = await fs.pathExists(tempFilePath);
+      if (!fileExists) {
+        log(`Error: Output file was not created at ${tempFilePath}`, 'elevenlabs');
+        return null;
+      }
+      
+      // Read the file into a buffer
+      const audioBuffer = await fs.readFile(tempFilePath);
+      log(`Successfully read audio file, size: ${audioBuffer.length} bytes`, 'elevenlabs');
+      
+      // Clean up the temporary file
+      await fs.unlink(tempFilePath).catch((err: Error) => {
+        log(`Warning: Could not delete temp file: ${err.message}`, 'elevenlabs');
+      });
+      
+      return audioBuffer;
+    } catch (innerError: any) {
+      log(`Inner error generating speech: ${innerError.message}`, 'elevenlabs');
+      log(`Inner error stack: ${innerError.stack}`, 'elevenlabs');
+      return null;
+    }
+  } catch (error: any) {
     log(`Error generating speech: ${error.message}`, 'elevenlabs');
     return null;
   }
@@ -111,7 +135,7 @@ export async function getAvailableVoices() {
     // This could be expanded to fetch the actual voice list from the API
     // const voices = await elevenlabs.getVoices();
     return AVAILABLE_VOICES;
-  } catch (error) {
+  } catch (error: any) {
     log(`Error fetching voices: ${error.message}`, 'elevenlabs');
     return AVAILABLE_VOICES; // Fallback to predefined list
   }
