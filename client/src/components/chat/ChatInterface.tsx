@@ -272,6 +272,20 @@ What would you like to learn about today?`;
         </ScrollArea>
         
         <div className="bg-white rounded-lg shadow-sm p-3 mt-2">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-muted-foreground">
+              <span className="flex items-center">
+                <span className="mr-1 text-green-500">
+                  <span className="material-icons text-sm">
+                    {speaking ? "volume_up" : "volume_down"}
+                  </span>
+                </span>
+                {speaking ? "AI speaking..." : "AI ready"}
+              </span>
+            </div>
+            <VoiceSettings />
+          </div>
+          
           <div className="flex items-end">
             <div className="flex-grow">
               <Textarea
