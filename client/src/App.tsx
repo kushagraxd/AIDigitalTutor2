@@ -19,7 +19,7 @@ import Profile from "@/pages/profile";
 
 function ModulePage() {
   // Extract module ID from URL params using wouter's hooks
-  const [match, params] = useRoute('/module/:id');
+  const [match, params] = useRoute('/modules/:id');
   const moduleId = parseInt(params?.id || '0');
   console.log("Module page loaded with ID:", moduleId, "match:", match, "params:", params);
   
