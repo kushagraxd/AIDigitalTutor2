@@ -83,8 +83,35 @@ export const useSpeechSynthesis = (initialOptions: SpeechSynthesisOptions = {}):
     // Cancel any ongoing speech
     window.speechSynthesis.cancel();
     
-    // Clean any potential "dot" issues from the text and prepare for speech
-    const cleanedText = text
+    // Clean the text thoroughly - remove ALL markdown, code, and technical elements
+    const rawCleanedText = text
+      // Remove code blocks completely
+      .replace(/```[\s\S]*?```/g, '')
+      // Remove inline code
+      .replace(/`[^`]+`/g, '')
+      // Remove markdown formatting
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold markers
+      .replace(/\*([^*]+)\*/g, '$1')     // Remove italic markers
+      .replace(/^#+\s+(.+)$/gm, '$1')    // Remove heading markers
+      // Remove markdown links leaving just the text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Remove bullet points and numbered lists
+      .replace(/^[\s-]*[-•*+][\s]+/gm, '') // Remove bullet points
+      .replace(/^\s*\d+\.\s+/gm, '')      // Remove numbered list markers
+      // Remove any JSON or code constructs
+      .replace(/{[^}]*}/g, '')
+      .replace(/\([A-Za-z0-9_]+\)/g, '')
+      // Remove URLs or make them speakable
+      .replace(/https?:\/\/\S+/g, 'website link')
+      .replace(/www\.\S+/g, 'website')
+      .replace(/\.\S+/g, '')             // Remove file extensions
+      // Remove HTML-like tags
+      .replace(/<[^>]+>/g, '')
+      // Normalize whitespace
+      .replace(/\s+/g, ' ');
+      
+    // Clean any potential "dot" issues from the text
+    const cleanedText = rawCleanedText
       .replace(/\.\s+/g, '. ') // Fix any "dot" issues by ensuring proper space after periods
       .replace(/\s+\./g, '.') // Remove spaces before periods
       .replace(/\s+,/g, ',') // Remove spaces before commas

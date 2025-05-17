@@ -102,7 +102,7 @@ Adapt your teaching approach accordingly - be more conversational, check underst
       
       Respond in JSON format with two keys:
       - "reply": Your full, properly formatted response with markdown. Include proper structure with Explanation, Example, Exercise, and Understanding Check sections.
-      - "speak": A concise, conversational version of your response suitable for text-to-speech (no markdown, shorter)
+      - "speak": A concise, natural, conversational version of your response suitable for text-to-speech. This should have NO markdown, NO code snippets, NO technical syntax, and should be in plain everyday language. Keep it brief but comprehensive.
     `;
     
     // Add educational scaffolding structure
