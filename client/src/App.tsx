@@ -1,4 +1,4 @@
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
 import { Switch, Route, useRoute } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -12,7 +12,10 @@ import Layout from "@/components/layout/Layout";
 import { useQuery } from "@tanstack/react-query";
 import ChatInterface from "@/components/chat/ChatInterface";
 import ModuleHeader from "@/components/modules/ModuleHeader";
-import VoiceSettings from "@/components/chat/VoiceSettings";
+import ModuleProgress from "@/components/modules/ModuleProgress";
+import { useAuth } from "@/hooks/useAuth";
+import { Module, UserProgress } from "@shared/schema";
+import Profile from "@/pages/profile";
 
 function ModulePage() {
   // Extract module ID from URL params using wouter's hooks
@@ -20,11 +23,41 @@ function ModulePage() {
   const moduleId = parseInt(params?.id || '0');
   console.log("Module page loaded with ID:", moduleId, "match:", match, "params:", params);
   
+  const { user } = useAuth();
+  
   // Fetch module data
-  const { data: module, isLoading } = useQuery({
+  const { data: module, isLoading: moduleLoading } = useQuery<Module>({
     queryKey: [`/api/modules/${moduleId}`],
     enabled: !isNaN(moduleId)
   });
+  
+  // Fetch all modules for total count
+  const { data: allModules, isLoading: modulesLoading } = useQuery<Module[]>({
+    queryKey: ['/api/modules'],
+  });
+  
+  // Fetch user's progress for this specific module
+  const { data: progress, isLoading: progressLoading } = useQuery<UserProgress>({
+    queryKey: [`/api/progress/${moduleId}`],
+    enabled: !isNaN(moduleId) && !!user,
+    // If the progress isn't found, don't keep retrying
+    retry: false
+  });
+  
+  // Combine loading states
+  const isLoading = moduleLoading || modulesLoading;
+  
+  // Set up automatic progress refresh
+  useEffect(() => {
+    const progressRefreshInterval = setInterval(() => {
+      if (user && moduleId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/progress/${moduleId}`] });
+        queryClient.invalidateQueries({ queryKey: ['/api/progress'] });
+      }
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => clearInterval(progressRefreshInterval);
+  }, [moduleId, user, queryClient]);
   
   if (isLoading) {
     return (
@@ -50,8 +83,21 @@ function ModulePage() {
   
   return (
     <>
-      <ModuleHeader module={module as any} />
-      <ChatInterface moduleId={moduleId} module={module as any} />
+      <div className="bg-white border-b border-neutral-medium p-4">
+        <ModuleHeader module={module} />
+        
+        {/* Progress tracking */}
+        <div className="mt-4">
+          {allModules && (
+            <ModuleProgress 
+              module={module} 
+              progress={progress} 
+              totalModules={allModules.length} 
+            />
+          )}
+        </div>
+      </div>
+      <ChatInterface moduleId={moduleId} module={module} />
     </>
   );
 }
@@ -81,8 +127,6 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        {/* Initialize the Indian female voice */}
-        <VoiceSettings />
         <Layout>
           <Router />
         </Layout>
