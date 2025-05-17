@@ -15,66 +15,24 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [location, setLocation] = useLocation();
-  const { isDemoMode } = useAuth();
-  const [demoProgress, setDemoProgress] = useState<UserProgress[]>([]);
-  const [demoHistory, setDemoHistory] = useState<any[]>([]);
-  
+  const { user, isAuthenticated } = useAuth();
   // Fetch modules
   const { data: modules, isLoading: modulesLoading } = useQuery<Module[]>({
     queryKey: ["/api/modules"],
   });
   
-  // Generate demo data when in demo mode and modules are loaded
-  useEffect(() => {
-    if (isDemoMode && modules && modules.length > 0) {
-      // Create mock progress data
-      const mockProgress = modules.map((module, index) => ({
-        id: module.id,
-        userId: "demo-user-123",
-        moduleId: module.id,
-        percentComplete: Math.min(100, Math.floor(Math.random() * 100) + (index === 0 ? 30 : 0)),
-        completed: index === 0 ? false : Math.random() > 0.7,
-        lastAccessed: new Date().toISOString(),
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }));
-      setDemoProgress(mockProgress);
-      
-      // Create mock chat history
-      const mockHistory = [
-        {
-          id: 1,
-          userId: "demo-user-123",
-          moduleId: modules[0].id,
-          question: "What is the best social media platform for B2B marketing?",
-          answer: "LinkedIn is typically the most effective for B2B marketing.",
-          confidenceScore: 95,
-          timestamp: new Date(Date.now() - 1000 * 60 * 30)
-        },
-        {
-          id: 2,
-          userId: "demo-user-123",
-          moduleId: modules[0].id,
-          question: "How do I measure ROI for digital marketing?",
-          answer: "Track conversions, analyze cost per acquisition, and monitor lifetime value.",
-          confidenceScore: 92,
-          timestamp: new Date(Date.now() - 1000 * 60 * 60)
-        }
-      ];
-      setDemoHistory(mockHistory);
-    }
-  }, [isDemoMode, modules]);
-  
   // Fetch user progress (only when not in demo mode)
   const { data: apiProgress, isLoading: progressLoading } = useQuery<UserProgress[]>({
     queryKey: ["/api/progress"],
-    enabled: !!modules && !isDemoMode,
+    enabled: !!modules && !isDemoMode && !!user && isAuthenticated,
+    // Add a refetch interval to ensure progress is updated regularly
+    refetchInterval: 5000, // Refetch every 5 seconds
   });
   
   // Fetch chat history (only when not in demo mode)
   const { data: apiHistory, isLoading: historyLoading } = useQuery({
     queryKey: ["/api/history", { limit: 5 }],
-    enabled: !isDemoMode,
+    enabled: !isDemoMode && !!user && isAuthenticated,
   });
   
   // Use demo data if in demo mode, otherwise use API data
@@ -83,7 +41,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   
   // Find current module progress
   const findCurrentModule = () => {
-    if (!modules || !progress || progress.length === 0) return null;
+    if (!modules || modules.length === 0) return null;
     
     // Get current module ID from URL if available
     const currentPath = location;
@@ -97,10 +55,21 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         ? progress.find(p => p.moduleId === currentModuleId)
         : null;
       
-      if (currentModule && currentProgress) {
+      if (currentModule) {
+        // Always return a module with progress data, even if no progress exists yet
+        // This ensures the progress bar is always displayed
         return {
           module: currentModule,
-          progress: currentProgress
+          progress: currentProgress || { 
+            id: -1, 
+            userId: user?.id || 'current-user', 
+            moduleId: currentModuleId, 
+            percentComplete: 10, 
+            completed: false,
+            lastAccessed: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
         };
       }
     }
@@ -132,7 +101,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       return {
         module: modules[0],
         progress: Array.isArray(progress) 
-          ? progress.find(p => p.moduleId === modules[0].id) || null
+          ? progress.find(p => p.moduleId === modules[0].id) || { 
+              id: -1, 
+              userId: user?.id || 'current-user', 
+              moduleId: modules[0].id, 
+              percentComplete: 10, 
+              completed: false,
+              lastAccessed: new Date(),
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
           : null
       };
     }
@@ -144,20 +122,30 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   
   const navigateToModule = (moduleId: number) => {
     setLocation(`/module/${moduleId}`);
-    if (onClose) onClose();
+    onClose();
   };
   
   return (
-    <aside 
+    <div
       className={cn(
-        "bg-white border-r border-neutral-medium w-64 flex-shrink-0 overflow-y-auto transition-all duration-300",
-        "fixed md:static inset-y-0 left-0 z-40 transform",
-        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r transform transition-transform duration-300 ease-in-out",
+        isOpen ? "translate-x-0" : "-translate-x-full"
       )}
     >
-      <ScrollArea className="h-full">
-        <div className="p-4">
-          <div className="mb-6">
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Digital Marketing AI</h2>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-full hover:bg-neutral-100"
+            aria-label="Close sidebar"
+          >
+            <span className="material-icons">close</span>
+          </button>
+        </div>
+        
+        <ScrollArea className="flex-grow">
+          <div className="p-4">
             <h2 className="text-xs uppercase tracking-wider text-neutral-gray font-semibold mb-3">
               Course Modules
             </h2>
@@ -167,16 +155,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
               </div>
             ) : (
-              <ul className="space-y-1">
-                {modules && modules.map((module) => (
+              <ul className="space-y-2">
+                {modules?.map((module) => (
                   <li key={module.id}>
                     <button
                       onClick={() => navigateToModule(module.id)}
                       className={cn(
-                        "flex items-center w-full px-3 py-2 text-sm rounded-md transition-all text-left",
-                        location === `/module/${module.id}`
-                          ? "bg-neutral-light text-primary"
-                          : "text-neutral-dark hover:bg-neutral-light hover:text-primary"
+                        "w-full text-left py-2 px-3 rounded-md text-sm flex items-center hover:bg-neutral-light",
+                        location === `/module/${module.id}` ? "bg-primary/10 text-primary font-medium" : ""
                       )}
                     >
                       <span className={cn(
@@ -196,7 +182,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <Separator className="my-4" />
           
           <div>
-            <h2 className="text-xs uppercase tracking-wider text-neutral-gray font-semibold mb-3">
+            <h2 className="text-xs uppercase tracking-wider text-neutral-gray font-semibold mb-3 px-4">
               Your Progress
             </h2>
             
@@ -205,7 +191,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
               </div>
             ) : currentModuleData ? (
-              <div className="bg-neutral-light rounded-lg p-4">
+              <div className="bg-neutral-light mx-4 rounded-lg p-4">
                 <ModuleProgress 
                   module={currentModuleData.module}
                   progress={currentModuleData.progress}
@@ -213,7 +199,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 />
               </div>
             ) : (
-              <div className="bg-neutral-light rounded-lg p-4 text-sm text-neutral-gray">
+              <div className="bg-neutral-light mx-4 rounded-lg p-4 text-sm text-neutral-gray">
                 No progress yet. Start a module to track your progress.
               </div>
             )}
@@ -221,52 +207,32 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           
           <Separator className="my-4" />
           
-          <div>
+          <div className="p-4">
             <h2 className="text-xs uppercase tracking-wider text-neutral-gray font-semibold mb-3">
-              History
+              Recent Questions
             </h2>
             
-            {historyLoading && !isDemoMode ? (
+            {historyLoading ? (
               <div className="flex justify-center py-4">
                 <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
               </div>
-            ) : history && Array.isArray(history) && history.length > 0 ? (
-              <ul className="space-y-1">
-                {history.map((item: any) => (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => navigateToModule(item.moduleId)}
-                      className="flex items-center w-full px-3 py-2 text-sm rounded-md text-neutral-dark hover:bg-neutral-light group transition-all text-left"
-                    >
-                      <span className="material-icons text-neutral-gray group-hover:text-primary mr-3 text-sm">
-                        history
-                      </span>
-                      <div className="overflow-hidden">
-                        <p className="truncate text-sm">{item.question}</p>
-                        <p className="text-xs text-neutral-gray">
-                          {new Date(item.timestamp).toLocaleDateString()} {new Date(item.timestamp).toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </button>
+            ) : history && history.length > 0 ? (
+              <ul className="space-y-4">
+                {history.slice(0, 3).map((item: any) => (
+                  <li key={item.id} className="text-sm">
+                    <p className="font-medium text-neutral-dark mb-1">{item.question}</p>
+                    <p className="text-neutral-gray">{item.answer}</p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="text-sm text-neutral-gray p-2">
-                No chat history yet.
+              <div className="text-sm text-neutral-gray">
+                No recent questions. Start chatting with the AI to see your history.
               </div>
             )}
           </div>
-        </div>
-      </ScrollArea>
-      
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div 
-          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
-          onClick={onClose}
-        />
-      )}
-    </aside>
+        </ScrollArea>
+      </div>
+    </div>
   );
 }
