@@ -202,7 +202,7 @@ What would you like to learn about today?`;
       setMessages(prev => [...prev, aiMessage]);
       
       // Save last AI message for repeat functionality
-      // Use the special speech text or create a simplified version
+      // Use the special speech text from server or create a simplified version by stripping markdown/code
       const speakText = data.speak || stripMarkdownAndCode(data.reply);
       setLastAiMessage({
         content: data.reply,
