@@ -79,7 +79,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const currentModuleData = getCurrentModule();
   
   const handleModuleClick = (moduleId: number) => {
-    setLocation(`/module/${moduleId}`);
+    console.log("Navigating to module:", moduleId);
+    setLocation(`/modules/${moduleId}`);
     onClose();
   };
   
