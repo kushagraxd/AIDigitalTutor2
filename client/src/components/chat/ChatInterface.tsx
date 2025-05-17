@@ -4,17 +4,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Module } from "@shared/schema";
 import ChatMessage from "./ChatMessage";
-import VoiceModal from "./VoiceModal";
-import VoiceSettings from "./VoiceSettings";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
-
 
 interface ChatInterfaceProps {
   moduleId?: number;
@@ -31,102 +25,15 @@ interface Message {
   source?: string;
 }
 
-// Helper function to strip markdown and code from text for speech
-const stripMarkdownAndCode = (text: string): string => {
-  return text
-    // Remove code blocks completely
-    .replace(/```[\s\S]*?```/g, 'I have shared some code examples in the text.')
-    // Remove inline code
-    .replace(/`[^`]+`/g, '')
-    // Remove markdown formatting
-    .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold markers
-    .replace(/\*([^*]+)\*/g, '$1')     // Remove italic markers
-    .replace(/^#+\s+(.+)$/gm, '$1')    // Remove heading markers
-    // Remove markdown links leaving just the text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Remove bullet points and numbered lists but keep the text
-    .replace(/^[\s-]*[-•*+][\s]+(.+)$/gm, '$1') // Clean bullet points
-    .replace(/^\s*\d+\.\s+(.+)$/gm, '$1')      // Clean numbered list markers
-    // Remove technical syntax
-    .replace(/{[^}]*}/g, '')
-    .replace(/<[^>]+>/g, '')
-    // Fix URLs
-    .replace(/https?:\/\/\S+/g, 'website link')
-    // Clean whitespace
-    .replace(/\s+/g, ' ')
-    .trim();
-};
-
 export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
-  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
-  const [lastAiMessage, setLastAiMessage] = useState<{content: string, speak: string} | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Browser's built-in speech synthesis (fallback)
-  const { speak: speakBrowser, cancel, speaking: speakingBrowser } = useSpeechSynthesis();
-  
-  // Use browser's speech synthesis status
-  const speaking = speakingBrowser;
-  const { 
-    transcript, 
-    isListening, 
-    startListening, 
-    stopListening, 
-    resetTranscript,
-    browserSupportsSpeechRecognition 
-  } = useSpeechRecognition();
-  
-  // Function to handle voice input
-  const handleVoiceInput = () => {
-    if (!browserSupportsSpeechRecognition) {
-      toast({
-        title: "Not supported",
-        description: "Speech recognition is not supported in your browser.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    resetTranscript();
-    setVoiceModalOpen(true);
-    startListening();
-  };
-  
-  // Function to repeat the last AI message
-  const handleRepeatMessage = () => {
-    if (lastAiMessage && lastAiMessage.speak) {
-      // Stop any current speech
-      cancel();
-      
-      // Log for debugging
-      console.log("Repeating message:", lastAiMessage.speak);
-      
-      // Start speaking the last AI message again with a slight delay
-      setTimeout(() => {
-        toast({
-          title: "Repeating last message",
-          description: "The AI is repeating the last message.",
-        });
-        
-        // Use browser speech synthesis
-        speakBrowser(lastAiMessage.speak);
-      }, 200);
-    } else {
-      console.log("No message to repeat:", lastAiMessage);
-      
-      toast({
-        title: "Nothing to repeat",
-        description: "There is no AI message to repeat.",
-      });
-    }
-  };
-
   // Define mutation for updating module progress
   const updateProgressMutation = useMutation({
     mutationFn: async ({ moduleId, percentComplete, completed }: { moduleId: number, percentComplete: number, completed: boolean }) => {
@@ -165,12 +72,6 @@ What would you like to learn about today?`;
       };
       setMessages([welcomeMessage]);
       
-      // Set initial welcome message for repeat functionality
-      setLastAiMessage({
-        content: welcomeContent,
-        speak: "Welcome to the Digital Marketing module! I'm your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market. What would you like to learn about today?"
-      });
-      
       // Initialize module progress to at least 10% when a module is loaded
       if (moduleId && user) {
         updateProgressMutation.mutate({
@@ -206,23 +107,6 @@ What would you like to learn about today?`;
       };
       
       setMessages(prev => [...prev, aiMessage]);
-      
-      // Save last AI message for repeat functionality
-      // Use the special speech text from server or create a simplified version by stripping markdown/code
-      const speakText = data.speak || stripMarkdownAndCode(data.reply);
-      setLastAiMessage({
-        content: data.reply,
-        speak: speakText
-      });
-      
-      // Speak the response using browser's built-in speech synthesis
-      console.log("Speaking text:", speakText);
-      
-      // Use a timeout to allow the UI to update before speaking
-      setTimeout(() => {
-        // Use browser speech synthesis
-        speakBrowser(speakText);
-      }, 200);
       
       // Invalidate history queries
       queryClient.invalidateQueries({ queryKey: ['/api/history'] });
@@ -260,13 +144,6 @@ What would you like to learn about today?`;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-  
-  // Update input when transcript changes
-  useEffect(() => {
-    if (transcript) {
-      setInputMessage(transcript);
-    }
-  }, [transcript]);
   
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -316,20 +193,6 @@ What would you like to learn about today?`;
         </ScrollArea>
         
         <div className="bg-white rounded-lg shadow-sm p-3 mt-2">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm text-muted-foreground">
-              <span className="flex items-center">
-                <span className="mr-1 text-green-500">
-                  <span className="material-icons text-sm">
-                    {speaking ? "volume_up" : "volume_down"}
-                  </span>
-                </span>
-                {speaking ? "AI speaking..." : "AI ready"}
-              </span>
-            </div>
-            <VoiceSettings />
-          </div>
-          
           <div className="flex items-end">
             <div className="flex-grow">
               <Textarea
@@ -343,41 +206,7 @@ What would you like to learn about today?`;
                 rows={1}
               />
             </div>
-            <div className="flex items-center space-x-2 ml-3">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={handleRepeatMessage}
-                    disabled={!lastAiMessage || speaking}
-                    aria-label="Repeat last message"
-                  >
-                    <span className="material-icons">replay</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Repeat last AI message</p>
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={handleVoiceInput}
-                    disabled={sendMessageMutation.isPending}
-                    aria-label="Voice input"
-                  >
-                    <span className="material-icons">mic</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Voice input</p>
-                </TooltipContent>
-              </Tooltip>
-              
+            <div className="flex items-center ml-3">
               <Button
                 size="icon"
                 onClick={handleSendMessage}
@@ -390,21 +219,6 @@ What would you like to learn about today?`;
           </div>
         </div>
       </div>
-      
-      <VoiceModal
-        isOpen={voiceModalOpen}
-        onClose={() => {
-          setVoiceModalOpen(false);
-          stopListening();
-        }}
-        onSubmit={() => {
-          setVoiceModalOpen(false);
-          stopListening();
-          setTimeout(handleSendMessage, 300);
-        }}
-        transcript={transcript}
-        isListening={isListening}
-      />
     </div>
   );
 }
