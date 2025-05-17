@@ -30,6 +30,32 @@ interface Message {
   source?: string;
 }
 
+// Helper function to strip markdown and code from text for speech
+const stripMarkdownAndCode = (text: string): string => {
+  return text
+    // Remove code blocks completely
+    .replace(/```[\s\S]*?```/g, 'I have shared some code examples in the text.')
+    // Remove inline code
+    .replace(/`[^`]+`/g, '')
+    // Remove markdown formatting
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold markers
+    .replace(/\*([^*]+)\*/g, '$1')     // Remove italic markers
+    .replace(/^#+\s+(.+)$/gm, '$1')    // Remove heading markers
+    // Remove markdown links leaving just the text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    // Remove bullet points and numbered lists but keep the text
+    .replace(/^[\s-]*[-•*+][\s]+(.+)$/gm, '$1') // Clean bullet points
+    .replace(/^\s*\d+\.\s+(.+)$/gm, '$1')      // Clean numbered list markers
+    // Remove technical syntax
+    .replace(/{[^}]*}/g, '')
+    .replace(/<[^>]+>/g, '')
+    // Fix URLs
+    .replace(/https?:\/\/\S+/g, 'website link')
+    // Clean whitespace
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
 export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -176,7 +202,8 @@ What would you like to learn about today?`;
       setMessages(prev => [...prev, aiMessage]);
       
       // Save last AI message for repeat functionality
-      const speakText = data.speak || data.reply;
+      // Use the special speech text or create a simplified version
+      const speakText = data.speak || stripMarkdownAndCode(data.reply);
       setLastAiMessage({
         content: data.reply,
         speak: speakText

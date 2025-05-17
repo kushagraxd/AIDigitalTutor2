@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Module, UserProgress } from "@shared/schema";
@@ -18,48 +18,42 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, isAuthenticated } = useAuth();
   
   // Fetch modules
-  const { data: modules, isLoading: modulesLoading } = useQuery<Module[]>({
+  const { data: modules } = useQuery<Module[]>({
     queryKey: ["/api/modules"],
   });
   
-  // Fetch user progress
-  const { data: progress, isLoading: progressLoading } = useQuery<UserProgress[]>({
+  // Fetch user progress (with refresh interval)
+  const { data: progress } = useQuery<UserProgress[]>({
     queryKey: ["/api/progress"],
     enabled: !!modules && !!user && isAuthenticated,
-    // Add a refetch interval to ensure progress is updated regularly
-    refetchInterval: 5000, // Refetch every 5 seconds
+    refetchInterval: 5000, // Refresh every 5 seconds
   });
   
   // Fetch chat history
-  const { data: history, isLoading: historyLoading } = useQuery({
+  const { data: history } = useQuery({
     queryKey: ["/api/history", { limit: 5 }],
     enabled: !!user && isAuthenticated,
   });
   
-  // Find current module progress
-  const findCurrentModule = () => {
+  // Find current module
+  const getCurrentModule = () => {
     if (!modules || modules.length === 0) return null;
     
-    // Get current module ID from URL if available
-    const currentPath = location;
-    const moduleIdMatch = currentPath.match(/\/module\/(\d+)/);
+    // Get current module ID from URL
+    const moduleIdMatch = location.match(/\/module\/(\d+)/);
     const currentModuleId = moduleIdMatch ? parseInt(moduleIdMatch[1]) : null;
     
-    // If we have a current module ID, find it and its progress
+    // If we have a current module ID, find it
     if (currentModuleId) {
       const currentModule = modules.find(m => m.id === currentModuleId);
-      const currentProgress = progress && Array.isArray(progress) 
-        ? progress.find(p => p.moduleId === currentModuleId)
-        : null;
+      const currentProgress = progress?.find(p => p.moduleId === currentModuleId);
       
       if (currentModule) {
-        // Always return a module with progress data, even if no progress exists yet
-        // This ensures the progress bar is always displayed
         return {
           module: currentModule,
           progress: currentProgress || { 
             id: -1, 
-            userId: user?.id || 'current-user', 
+            userId: user?.id || '', 
             moduleId: currentModuleId, 
             percentComplete: 10, 
             completed: false,
@@ -71,53 +65,20 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       }
     }
     
-    // Otherwise find the most recently accessed module
-    let sortedProgress: UserProgress[] = [];
-    if (progress && Array.isArray(progress)) {
-      sortedProgress = [...progress].sort((a, b) => {
-        const dateA = a.lastAccessed ? new Date(a.lastAccessed).getTime() : 0;
-        const dateB = b.lastAccessed ? new Date(b.lastAccessed).getTime() : 0;
-        return dateB - dateA;
-      });
-    }
-    
-    if (sortedProgress.length > 0) {
-      const recentModuleId = sortedProgress[0].moduleId;
-      const recentModule = modules.find(m => m.id === recentModuleId);
-      
-      if (recentModule) {
-        return {
-          module: recentModule,
-          progress: sortedProgress[0]
-        };
-      }
-    }
-    
-    // If no current module, return the first one
+    // Default to first module if none selected
     if (modules.length > 0) {
       return {
         module: modules[0],
-        progress: progress && Array.isArray(progress) 
-          ? progress.find(p => p.moduleId === modules[0].id) || { 
-              id: -1, 
-              userId: user?.id || 'current-user', 
-              moduleId: modules[0].id, 
-              percentComplete: 10, 
-              completed: false,
-              lastAccessed: new Date(),
-              createdAt: new Date(),
-              updatedAt: new Date()
-            }
-          : null
+        progress: progress?.find(p => p.moduleId === modules[0].id) || null
       };
     }
     
     return null;
   };
   
-  const currentModuleData = findCurrentModule();
+  const currentModuleData = getCurrentModule();
   
-  const navigateToModule = (moduleId: number) => {
+  const handleModuleClick = (moduleId: number) => {
     setLocation(`/module/${moduleId}`);
     onClose();
   };
@@ -125,107 +86,77 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <div
       className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r transform transition-transform duration-300 ease-in-out",
+        "fixed inset-y-0 left-0 z-50 w-72 bg-background shadow-lg border-r transform transition-transform duration-300 ease-in-out",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}
     >
-      <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Digital Marketing AI</h2>
-          <button
+      <div className="flex h-full flex-col">
+        <div className="border-b p-4 flex items-center justify-between">
+          <h3 className="font-semibold">Digital Marketing AI</h3>
+          <button 
             onClick={onClose}
-            className="p-1 rounded-full hover:bg-neutral-100"
-            aria-label="Close sidebar"
+            className="p-1 hover:bg-accent rounded-full"
           >
-            <span className="material-icons">close</span>
+            <span className="material-icons text-sm">close</span>
           </button>
         </div>
         
-        <ScrollArea className="flex-grow">
+        <ScrollArea className="flex-1">
           <div className="p-4">
-            <h2 className="text-xs uppercase tracking-wider text-neutral-gray font-semibold mb-3">
-              Course Modules
-            </h2>
+            <h3 className="mb-2 text-sm font-medium">Modules</h3>
             
-            {modulesLoading ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {modules?.map((module) => (
-                  <li key={module.id}>
-                    <button
-                      onClick={() => navigateToModule(module.id)}
-                      className={cn(
-                        "w-full text-left py-2 px-3 rounded-md text-sm flex items-center hover:bg-neutral-light",
-                        location === `/module/${module.id}` ? "bg-primary/10 text-primary font-medium" : ""
-                      )}
-                    >
-                      <span className={cn(
-                        "material-icons flex-shrink-0 mr-2 text-sm",
-                        location === `/module/${module.id}` ? "text-primary" : "text-neutral-gray"
-                      )}>
-                        {module.icon || "description"}
-                      </span>
-                      <span className="truncate">{module.title}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="space-y-1">
+              {modules?.map(module => (
+                <button
+                  key={module.id}
+                  className={cn(
+                    "w-full text-left px-3 py-2 text-sm rounded-md flex items-center",
+                    location === `/module/${module.id}` 
+                      ? "bg-primary/10 text-primary font-medium" 
+                      : "hover:bg-accent"
+                  )}
+                  onClick={() => handleModuleClick(module.id)}
+                >
+                  <span className="material-icons text-sm mr-2">
+                    {module.icon || "school"}
+                  </span>
+                  <span>{module.title}</span>
+                </button>
+              ))}
+            </div>
           </div>
           
           <Separator className="my-4" />
           
-          <div>
-            <h2 className="text-xs uppercase tracking-wider text-neutral-gray font-semibold mb-3 px-4">
-              Your Progress
-            </h2>
-            
-            {progressLoading ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            ) : currentModuleData ? (
-              <div className="bg-neutral-light mx-4 rounded-lg p-4">
-                <ModuleProgress 
+          {currentModuleData && (
+            <div className="px-4 mb-4">
+              <h3 className="mb-2 text-sm font-medium">Progress</h3>
+              <div className="bg-accent/50 p-3 rounded-lg">
+                <ModuleProgress
                   module={currentModuleData.module}
                   progress={currentModuleData.progress}
                   totalModules={modules?.length || 0}
                 />
               </div>
-            ) : (
-              <div className="bg-neutral-light mx-4 rounded-lg p-4 text-sm text-neutral-gray">
-                No progress yet. Start a module to track your progress.
-              </div>
-            )}
-          </div>
+            </div>
+          )}
           
           <Separator className="my-4" />
           
-          <div className="p-4">
-            <h2 className="text-xs uppercase tracking-wider text-neutral-gray font-semibold mb-3">
-              Recent Questions
-            </h2>
+          <div className="px-4">
+            <h3 className="mb-2 text-sm font-medium">Recent Questions</h3>
             
-            {historyLoading ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            ) : (history && Array.isArray(history) && history.length > 0) ? (
-              <ul className="space-y-4">
-                {(history as any[]).slice(0, 3).map((item: any) => (
-                  <li key={item.id} className="text-sm">
-                    <p className="font-medium text-neutral-dark mb-1">{item.question}</p>
-                    <p className="text-neutral-gray">{item.answer}</p>
-                  </li>
+            {history && Array.isArray(history) && history.length > 0 ? (
+              <div className="space-y-3">
+                {history.slice(0, 3).map((item: any) => (
+                  <div key={item.id} className="text-sm">
+                    <p className="font-medium">{item.question}</p>
+                    <p className="text-muted-foreground text-xs">{item.answer}</p>
+                  </div>
                 ))}
-              </ul>
-            ) : (
-              <div className="text-sm text-neutral-gray">
-                No recent questions. Start chatting with the AI to see your history.
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No recent questions</p>
             )}
           </div>
         </ScrollArea>
