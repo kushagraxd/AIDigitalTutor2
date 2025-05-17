@@ -434,12 +434,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Text is required" });
       }
       
+      console.log(`Received TTS request for text (${text.length} chars) with voice ID: ${voiceId || 'default'}`);
+      
+      if (!process.env.ELEVEN_LABS_API_KEY) {
+        console.error("Missing Eleven Labs API key - verify the API key is set");
+        return res.status(500).json({ message: "Missing Eleven Labs API key" });
+      }
+      
       // Generate speech with Eleven Labs
+      console.log("Attempting to generate speech with Eleven Labs...");
       const audioBuffer = await generateSpeechAudio(text, voiceId);
       
       if (!audioBuffer) {
+        console.error("Failed to generate speech - no audio buffer returned");
         return res.status(500).json({ message: "Failed to generate speech" });
       }
+      
+      console.log(`Successfully generated speech, buffer size: ${audioBuffer.length} bytes`);
       
       // Set appropriate headers for audio file
       res.set({
@@ -449,9 +460,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Send the audio file
       res.send(audioBuffer);
-    } catch (error) {
-      console.error("Error generating speech:", error);
-      res.status(500).json({ message: "Failed to generate speech" });
+    } catch (error: any) {
+      console.error("Error generating speech:", error.message);
+      console.error("Full error:", error);
+      res.status(500).json({ message: "Failed to generate speech", error: error.message });
     }
   });
   

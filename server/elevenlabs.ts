@@ -7,8 +7,11 @@ import { log } from './vite';
  */
 
 // Initialize Eleven Labs client
+const apiKey = process.env.ELEVEN_LABS_API_KEY || '';
+log(`Initializing Eleven Labs with API key (${apiKey ? 'present' : 'missing'})`, 'elevenlabs');
+
 const elevenlabs = new ElevenLabs({
-  apiKey: process.env.ELEVEN_LABS_API_KEY || '',
+  apiKey: apiKey,
 });
 
 // Default voice ID - Rachel voice is one of the most natural sounding
