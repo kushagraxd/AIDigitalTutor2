@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Module } from "@shared/schema";
 import ChatMessage from "./ChatMessage";
+import { Send } from "lucide-react";
 
 interface ChatInterfaceProps {
   moduleId?: number;
@@ -213,7 +214,7 @@ What would you like to learn about today?`;
                 disabled={!inputMessage.trim() || sendMessageMutation.isPending}
                 aria-label="Send message"
               >
-                <span className="material-icons">send</span>
+                <Send className="h-4 w-4" />
               </Button>
             </div>
           </div>
