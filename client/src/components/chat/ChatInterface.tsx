@@ -34,6 +34,7 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
+  const [lastProgressUpdate, setLastProgressUpdate] = useState<number>(0);
   
   // Define mutation for updating module progress
   const updateProgressMutation = useMutation({
@@ -46,46 +47,74 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
       if (moduleId) {
         queryClient.invalidateQueries({ queryKey: [`/api/progress/${moduleId}`] });
       }
+      console.log("Progress updated successfully");
     }
   });
   
   // Fetch existing chat history for this module
-  const { data: chatHistory } = useQuery<ChatHistory[]>({
+  const { data: chatHistory, isLoading: isHistoryLoading } = useQuery<ChatHistory[]>({
     queryKey: [`/api/history/${moduleId}`],
     enabled: !!moduleId && !!user,
   });
 
-  // Add welcome message on first load or load from chat history
+  // Reset messages when moduleId changes to fix the module loading issue
   useEffect(() => {
-    if (!messages.length) {
+    setMessages([]);
+    setLastProgressUpdate(0);
+  }, [moduleId]);
+
+  // Load chat history or welcome message
+  useEffect(() => {
+    // Only process if we have a valid module and are not already displaying messages for this module
+    if ((!messages.length || messages.length === 1) && !isHistoryLoading) {
       if (chatHistory && Array.isArray(chatHistory) && chatHistory.length > 0) {
+        console.log("Loading chat history for module:", moduleId, "with", chatHistory.length, "entries");
+        
         // We have existing chat history, let's load it
         const formattedMessages: Message[] = [];
         
         // Process each chat history entry into two messages (user question and AI answer)
         for (const entry of chatHistory) {
-          // Add user question
+          // Add user question - handle different field names
           formattedMessages.push({
             id: `user-${entry.id}`,
             type: 'user',
-            content: entry.question,
+            content: entry.question || "", // Use question field
             timestamp: new Date(entry.timestamp ?? Date.now()),
           });
           
-          // Add AI answer
+          // Add AI answer - handle different field names
           formattedMessages.push({
             id: `ai-${entry.id}`,
             type: 'ai',
-            content: entry.answer,
+            content: entry.answer || "", // Use answer field
             timestamp: new Date(entry.timestamp ?? Date.now()),
             markdown: true,
             confidence: entry.confidenceScore ? Number(entry.confidenceScore) : undefined,
             source: entry.source ? String(entry.source) : undefined
           });
         }
+        
         setMessages(formattedMessages);
+        
+        // Update progress based on number of exchanges
+        if (moduleId && user) {
+          const aiMessageCount = formattedMessages.filter(m => m.type === 'ai').length;
+          const percentComplete = Math.min(100, aiMessageCount * 10);
+          
+          if (percentComplete > lastProgressUpdate) {
+            updateProgressMutation.mutate({
+              moduleId,
+              percentComplete: Math.max(10, percentComplete), // At least 10%
+              completed: percentComplete >= 100
+            });
+            setLastProgressUpdate(percentComplete);
+          }
+        }
       } else {
         // No history, show welcome message
+        console.log("No chat history found, showing welcome message for module:", moduleId);
+        
         const welcomeContent = `# Welcome to the ${module?.title || 'Digital Marketing'} module!
 
 I'm your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market.
@@ -107,6 +136,7 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
           timestamp: new Date(),
           markdown: true
         };
+        
         setMessages([welcomeMessage]);
         
         // Initialize module progress to at least 10% when a module is loaded
@@ -116,32 +146,67 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
             percentComplete: 10,
             completed: false
           });
+          setLastProgressUpdate(10);
         }
       }
     }
-  }, [module, moduleId, user, messages.length, updateProgressMutation, chatHistory]);
-  
-  // Mutation for sending messages to AI
-  const sendMessageMutation = useMutation({
-    mutationFn: async (message: string) => {
-      return apiRequest("POST", "/api/ai/chat", {
-        question: message,
+  }, [chatHistory, isHistoryLoading, messages.length, module, moduleId, updateProgressMutation, user, lastProgressUpdate]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "0px";
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = Math.min(scrollHeight, 120) + "px";
+    }
+  }, [inputMessage]);
+
+  // Handle send message
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+    
+    // Define userMessage
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      type: 'user',
+      content: inputMessage,
+      timestamp: new Date()
+    };
+    
+    // Add user message to messages
+    setMessages(prev => [...prev, userMessage]);
+    
+    // Clear input
+    setInputMessage("");
+    
+    try {
+      // Prepare request object - Include module information if available
+      const requestData = {
+        message: inputMessage,
         moduleId: moduleId,
-        context: messages.slice(-5).map(m => `${m.type}: ${m.content}`).join('\n')
-      });
-    },
-    onSuccess: async (response) => {
-      const data = await response.json();
+        previousMessages: messages.map(m => ({
+          role: m.type === 'user' ? 'user' : 'assistant',
+          content: m.content
+        }))
+      };
       
-      // Add AI response to messages
+      // Send request to the API
+      const response = await apiRequest("POST", "/api/chat", requestData);
+      
+      // Parse AI response - ensure we handle the response data properly
       const aiMessage: Message = {
-        id: Date.now().toString(),
+        id: `ai-${Date.now()}`,
         type: 'ai',
-        content: data.reply,
+        content: typeof response === 'object' && response.reply ? response.reply : String(response),
         timestamp: new Date(),
         markdown: true,
-        confidence: data.confidence,
-        source: data.source
+        confidence: typeof response === 'object' ? response.confidence : undefined,
+        source: typeof response === 'object' ? response.source : undefined
       };
       
       setMessages(prev => [...prev, aiMessage]);
@@ -160,19 +225,21 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
         const percentComplete = Math.min(100, aiMessageCount * 10);
         const completed = percentComplete >= 100;
         
-        // Update progress
-        updateProgressMutation.mutate({
-          moduleId,
-          percentComplete,
-          completed
-        });
-        
-        // Force refresh progress data in queries to update UI immediately
-        queryClient.invalidateQueries([`/api/progress/${moduleId}`]);
-        queryClient.invalidateQueries(['/api/progress']);
+        // Update progress only if it has increased
+        if (percentComplete > lastProgressUpdate) {
+          updateProgressMutation.mutate({
+            moduleId,
+            percentComplete,
+            completed
+          });
+          setLastProgressUpdate(percentComplete);
+          
+          // Force refresh progress data in queries to update UI immediately
+          queryClient.invalidateQueries({ queryKey: [`/api/progress/${moduleId}`] });
+          queryClient.invalidateQueries({ queryKey: ['/api/progress'] });
+        }
       }
-    },
-    onError: (error) => {
+    } catch (error) {
       console.error("Error sending message:", error);
       toast({
         title: "Error",
@@ -180,84 +247,50 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
         variant: "destructive"
       });
     }
-  });
-  
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-  
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
-    
-    // Add user message to messages
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: inputMessage,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    
-    // Clear input
-    setInputMessage("");
-    
-    // Send to AI
-    sendMessageMutation.mutate(userMessage.content);
   };
-  
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+
+  // Handle keyboard shortcuts
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
-  
-  // Auto-resize textarea based on content
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [inputMessage]);
-  
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex flex-col flex-grow overflow-hidden">
-        <ScrollArea className="flex-grow px-4">
-          <div className="space-y-4 py-4">
-            {messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))}
-            <div ref={messagesEndRef} />
+      <ScrollArea className="flex-grow px-4 py-6">
+        <div className="space-y-6 max-w-3xl mx-auto">
+          {messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
+      
+      <div className="bg-white rounded-lg shadow-sm p-3 mt-2">
+        <div className="flex items-end">
+          <div className="flex-grow">
+            <Textarea
+              ref={textareaRef}
+              id="user-input"
+              placeholder="Type your message here..."
+              className="min-h-[40px] max-h-[120px] border-0 focus-visible:ring-0 resize-none text-sm"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              rows={1}
+            />
           </div>
-        </ScrollArea>
-        
-        <div className="bg-white rounded-lg shadow-sm p-3 mt-2">
-          <div className="flex items-end">
-            <div className="flex-grow">
-              <Textarea
-                ref={textareaRef}
-                id="user-input"
-                placeholder="Type your message here..."
-                className="min-h-[40px] max-h-[120px] border-0 focus-visible:ring-0 resize-none text-sm"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                rows={1}
-              />
-            </div>
-            <div className="flex items-center ml-3">
-              <Button
-                size="icon"
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || sendMessageMutation.isPending}
-                aria-label="Send message"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="flex items-center ml-3">
+            <Button
+              size="icon"
+              onClick={handleSendMessage}
+              disabled={!inputMessage.trim()}
+              className="rounded-full h-9 w-9 bg-primary hover:bg-primary/90"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
