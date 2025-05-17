@@ -1,4 +1,5 @@
 import ElevenLabs from 'elevenlabs-node';
+import fs from 'fs-extra';
 import { log } from './vite';
 
 /**
@@ -71,21 +72,29 @@ export async function generateSpeechAudio(
       return null;
     }
     
+    // Create a temporary file path for the audio (required by the SDK)
+    const tempFilePath = `/tmp/speech-${Date.now()}.mp3`;
+    
     // Log the text being sent for speech generation (for debugging)
     log(`Generating speech for text (${cleanedText.length} chars)`, 'elevenlabs');
     
     // Generate speech using Eleven Labs
-    const audioBuffer = await elevenlabs.textToSpeech({
-      voice_id: voiceId,
-      text: cleanedText,
-      model_id: 'eleven_multilingual_v2', // Use the multilingual model for better quality
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        style: 0.1, // Lower value for more natural style
-        use_speaker_boost: true
-      }
+    await elevenlabs.textToSpeech({
+      voiceId: voiceId, // Note the different parameter name (camelCase)
+      fileName: tempFilePath, // Required by the SDK
+      textInput: cleanedText, // Note the different parameter name
+      modelId: 'eleven_multilingual_v2', // Use the multilingual model for better quality
+      stability: 0.5,
+      similarityBoost: 0.75,
+      style: 0.1, // Lower value for more natural style
+      speakerBoost: true
     });
+    
+    // Read the file into a buffer
+    const audioBuffer = await fs.readFile(tempFilePath);
+    
+    // Clean up the temporary file
+    await fs.unlink(tempFilePath).catch(() => {});
     
     return audioBuffer;
   } catch (error) {
