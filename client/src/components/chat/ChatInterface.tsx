@@ -1,18 +1,19 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { Module } from "@shared/schema";
-import { Textarea } from "@/components/ui/textarea";
+import React, { useState, useEffect, useRef } from "react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { Module } from "@shared/schema";
 import ChatMessage from "./ChatMessage";
 import VoiceModal from "./VoiceModal";
 import VoiceSettings from "./VoiceSettings";
-import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 
 interface ChatInterfaceProps {
   moduleId?: number;
@@ -50,6 +51,22 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
     browserSupportsSpeechRecognition 
   } = useSpeechRecognition();
   
+  // Function to handle voice input
+  const handleVoiceInput = () => {
+    if (!browserSupportsSpeechRecognition) {
+      toast({
+        title: "Not supported",
+        description: "Speech recognition is not supported in your browser.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    resetTranscript();
+    setVoiceModalOpen(true);
+    startListening();
+  };
+  
   // Function to repeat the last AI message
   const handleRepeatMessage = () => {
     if (lastAiMessage && lastAiMessage.speak) {
@@ -73,12 +90,25 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
       
       toast({
         title: "Nothing to repeat",
-        description: "There is no previous AI message to repeat.",
-        variant: "destructive"
+        description: "There is no AI message to repeat.",
       });
     }
   };
 
+  // Define mutation for updating module progress
+  const updateProgressMutation = useMutation({
+    mutationFn: async ({ moduleId, percentComplete, completed }: { moduleId: number, percentComplete: number, completed: boolean }) => {
+      return apiRequest("POST", `/api/progress/${moduleId}`, { percentComplete, completed });
+    },
+    onSuccess: () => {
+      // Invalidate progress queries to refresh progress data
+      queryClient.invalidateQueries({ queryKey: ['/api/progress'] });
+      if (moduleId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/progress/${moduleId}`] });
+      }
+    }
+  });
+  
   // Add welcome message on first load and initialize progress tracking
   useEffect(() => {
     if (messages.length === 0) {
@@ -119,20 +149,6 @@ What would you like to learn about today?`;
       }
     }
   }, [module, moduleId, user, messages.length, updateProgressMutation]);
-  
-  // Mutation for updating module progress
-  const updateProgressMutation = useMutation({
-    mutationFn: async ({ moduleId, percentComplete, completed }: { moduleId: number, percentComplete: number, completed: boolean }) => {
-      return apiRequest("POST", `/api/progress/${moduleId}`, { percentComplete, completed });
-    },
-    onSuccess: () => {
-      // Invalidate progress queries to refresh progress data
-      queryClient.invalidateQueries({ queryKey: ['/api/progress'] });
-      if (moduleId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/progress/${moduleId}`] });
-      }
-    }
-  });
   
   // Mutation for sending messages to AI
   const sendMessageMutation = useMutation({
@@ -241,37 +257,7 @@ What would you like to learn about today?`;
     }
   };
   
-  const handleVoiceInput = () => {
-    if (!browserSupportsSpeechRecognition) {
-      toast({
-        title: "Speech Recognition Not Supported",
-        description: "Your browser doesn't support speech recognition.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setVoiceModalOpen(true);
-    resetTranscript();
-    startListening();
-  };
-  
-  const handleVoiceModalClose = () => {
-    stopListening();
-    setVoiceModalOpen(false);
-  };
-  
-  const handleVoiceModalSubmit = () => {
-    stopListening();
-    setVoiceModalOpen(false);
-    
-    if (transcript.trim()) {
-      setInputMessage(transcript);
-      setTimeout(() => handleSendMessage(), 100);
-    }
-  };
-  
-  // Auto-resize textarea
+  // Auto-resize textarea based on content
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -280,32 +266,13 @@ What would you like to learn about today?`;
   }, [inputMessage]);
   
   return (
-    <>
-      <div className="flex-grow flex flex-col p-4 overflow-hidden">
-        <ScrollArea className="flex-grow pr-4 chat-container">
-          <div className="space-y-4 pb-4">
+    <div className="flex flex-col h-full">
+      <div className="flex flex-col flex-grow overflow-hidden">
+        <ScrollArea className="flex-grow px-4">
+          <div className="space-y-4 py-4">
             {messages.map((message) => (
-              <ChatMessage 
-                key={message.id}
-                message={message} 
-              />
+              <ChatMessage key={message.id} message={message} />
             ))}
-            
-            {sendMessageMutation.isPending && (
-              <div className="flex">
-                <div className="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center">
-                  <span className="material-icons text-white text-sm">smart_toy</span>
-                </div>
-                <div className="ml-3 p-3 bg-white rounded-lg shadow-sm">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0s" }}></div>
-                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0.2s" }}></div>
-                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0.4s" }}></div>
-                  </div>
-                </div>
-              </div>
-            )}
-            
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
@@ -388,11 +355,18 @@ What would you like to learn about today?`;
       
       <VoiceModal
         isOpen={voiceModalOpen}
-        onClose={handleVoiceModalClose}
-        onSubmit={handleVoiceModalSubmit}
+        onClose={() => {
+          setVoiceModalOpen(false);
+          stopListening();
+        }}
+        onSubmit={() => {
+          setVoiceModalOpen(false);
+          stopListening();
+          setTimeout(handleSendMessage, 300);
+        }}
         transcript={transcript}
         isListening={isListening}
       />
-    </>
+    </div>
   );
 }
