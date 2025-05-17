@@ -79,7 +79,7 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
     }
   };
 
-  // Add welcome message on first load
+  // Add welcome message on first load and initialize progress tracking
   useEffect(() => {
     if (messages.length === 0) {
       const welcomeContent = `# Welcome to the ${module?.title || 'Digital Marketing'} module!
@@ -108,8 +108,31 @@ What would you like to learn about today?`;
         content: welcomeContent,
         speak: "Welcome to the Digital Marketing module! I'm your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market. What would you like to learn about today?"
       });
+      
+      // Initialize module progress to at least 10% when a module is loaded
+      if (moduleId && user) {
+        updateProgressMutation.mutate({
+          moduleId,
+          percentComplete: 10,
+          completed: false
+        });
+      }
     }
-  }, [module]);
+  }, [module, moduleId, user, messages.length, updateProgressMutation]);
+  
+  // Mutation for updating module progress
+  const updateProgressMutation = useMutation({
+    mutationFn: async ({ moduleId, percentComplete, completed }: { moduleId: number, percentComplete: number, completed: boolean }) => {
+      return apiRequest("POST", `/api/progress/${moduleId}`, { percentComplete, completed });
+    },
+    onSuccess: () => {
+      // Invalidate progress queries to refresh progress data
+      queryClient.invalidateQueries({ queryKey: ['/api/progress'] });
+      if (moduleId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/progress/${moduleId}`] });
+      }
+    }
+  });
   
   // Mutation for sending messages to AI
   const sendMessageMutation = useMutation({
@@ -151,6 +174,22 @@ What would you like to learn about today?`;
       queryClient.invalidateQueries({ queryKey: ['/api/history'] });
       if (moduleId) {
         queryClient.invalidateQueries({ queryKey: [`/api/history/${moduleId}`] });
+      }
+      
+      // Update progress when a new AI message is received
+      if (moduleId && user) {
+        // Calculate progress based on messages - each exchange increases progress by 10%
+        // Count AI messages except welcome message
+        const aiMessageCount = messages.filter(m => m.type === 'ai' && m.id !== 'welcome').length + 1;
+        const percentComplete = Math.min(100, aiMessageCount * 10);
+        const completed = percentComplete >= 100;
+        
+        // Update progress
+        updateProgressMutation.mutate({
+          moduleId,
+          percentComplete,
+          completed
+        });
       }
     },
     onError: (error) => {
