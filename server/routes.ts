@@ -8,6 +8,7 @@ import { populateKnowledgeBase } from "./knowledgeBaseData";
 import { addIndiaMarketingKnowledge } from "./indiaMarketingKnowledge";
 import { addDMA2025Knowledge } from "./dma2025Knowledge";
 import { addAllModules } from "./addModules";
+import { generateSpeechAudio, getAvailableVoices, AVAILABLE_VOICES } from "./elevenlabs";
 import multer from "multer";
 import fs from "fs";
 import { insertModuleSchema, insertKnowledgeBaseEntrySchema } from "@shared/schema";
@@ -421,6 +422,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating AI response:", error);
       res.status(500).json({ message: "Failed to generate AI response" });
+    }
+  });
+
+  // Eleven Labs Text-to-Speech endpoint
+  app.post('/api/tts', async (req, res) => {
+    try {
+      const { text, voiceId } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({ message: "Text is required" });
+      }
+      
+      // Generate speech with Eleven Labs
+      const audioBuffer = await generateSpeechAudio(text, voiceId);
+      
+      if (!audioBuffer) {
+        return res.status(500).json({ message: "Failed to generate speech" });
+      }
+      
+      // Set appropriate headers for audio file
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.length,
+      });
+      
+      // Send the audio file
+      res.send(audioBuffer);
+    } catch (error) {
+      console.error("Error generating speech:", error);
+      res.status(500).json({ message: "Failed to generate speech" });
+    }
+  });
+  
+  // Get available voices endpoint
+  app.get('/api/tts/voices', async (req, res) => {
+    try {
+      const voices = await getAvailableVoices();
+      res.json(voices);
+    } catch (error) {
+      console.error("Error fetching voices:", error);
+      res.status(500).json({ message: "Failed to fetch voices" });
     }
   });
 

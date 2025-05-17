@@ -14,6 +14,7 @@ import VoiceModal from "./VoiceModal";
 import VoiceSettings from "./VoiceSettings";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
+import { useElevenLabsSpeech } from "@/hooks/useElevenLabsSpeech";
 
 interface ChatInterfaceProps {
   moduleId?: number;
@@ -67,7 +68,19 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   const { toast } = useToast();
   const { user } = useAuth();
   
-  const { speak, cancel, speaking } = useSpeechSynthesis();
+  // Browser's built-in speech synthesis (fallback)
+  const { speak: speakBrowser, cancel, speaking: speakingBrowser } = useSpeechSynthesis();
+  
+  // Eleven Labs high-quality speech synthesis (primary)
+  const { 
+    speak: speakElevenLabs, 
+    isSpeaking: speakingElevenLabs, 
+    isLoading: loadingElevenLabs,
+    voices: elevenLabsVoices
+  } = useElevenLabsSpeech({ autoPlay: true });
+  
+  // Using Eleven Labs as primary with browser as fallback
+  const speaking = speakingElevenLabs || speakingBrowser;
   const { 
     transcript, 
     isListening, 
