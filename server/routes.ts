@@ -22,6 +22,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add India-specific digital marketing knowledge
   await addIndiaMarketingKnowledge(storage);
   
+  // Add DMA 2025 course knowledge
+  await addDMA2025Knowledge(storage);
+  
   // Add all course modules
   await addAllModules();
   
