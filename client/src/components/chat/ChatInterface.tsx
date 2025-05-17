@@ -14,7 +14,7 @@ import VoiceModal from "./VoiceModal";
 import VoiceSettings from "./VoiceSettings";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
-import { useElevenLabsSpeech } from "@/hooks/useElevenLabsSpeech";
+
 
 interface ChatInterfaceProps {
   moduleId?: number;
@@ -71,16 +71,8 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   // Browser's built-in speech synthesis (fallback)
   const { speak: speakBrowser, cancel, speaking: speakingBrowser } = useSpeechSynthesis();
   
-  // Eleven Labs high-quality speech synthesis (primary)
-  const { 
-    speak: speakElevenLabs, 
-    isSpeaking: speakingElevenLabs, 
-    isLoading: loadingElevenLabs,
-    voices: elevenLabsVoices
-  } = useElevenLabsSpeech({ autoPlay: true });
-  
-  // Using Eleven Labs as primary with browser as fallback
-  const speaking = speakingElevenLabs || speakingBrowser;
+  // Use browser's speech synthesis status
+  const speaking = speakingBrowser;
   const { 
     transcript, 
     isListening, 
@@ -116,20 +108,14 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
       console.log("Repeating message:", lastAiMessage.speak);
       
       // Start speaking the last AI message again with a slight delay
-      setTimeout(async () => {
+      setTimeout(() => {
         toast({
           title: "Repeating last message",
           description: "The AI is repeating the last message.",
         });
         
-        try {
-          // Try with Eleven Labs first
-          await speakElevenLabs(lastAiMessage.speak);
-        } catch (error) {
-          console.error("Error with Eleven Labs speech for repeat, falling back to browser:", error);
-          // Fall back to browser speech
-          speakBrowser(lastAiMessage.speak);
-        }
+        // Use browser speech synthesis
+        speakBrowser(lastAiMessage.speak);
       }, 200);
     } else {
       console.log("No message to repeat:", lastAiMessage);
@@ -229,19 +215,13 @@ What would you like to learn about today?`;
         speak: speakText
       });
       
-      // Speak the response using Eleven Labs (high quality) or browser (fallback)
+      // Speak the response using browser's built-in speech synthesis
       console.log("Speaking text:", speakText);
       
-      // A properly async approach that catches errors from speakElevenLabs
-      setTimeout(async () => {
-        try {
-          // First try with Eleven Labs for high-quality voice
-          await speakElevenLabs(speakText);
-        } catch (error) {
-          console.error("Error with Eleven Labs speech, falling back to browser:", error);
-          // Fallback to browser speech synthesis if Eleven Labs fails
-          speakBrowser(speakText);
-        }
+      // Use a timeout to allow the UI to update before speaking
+      setTimeout(() => {
+        // Use browser speech synthesis
+        speakBrowser(speakText);
       }, 200);
       
       // Invalidate history queries
