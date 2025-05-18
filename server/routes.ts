@@ -324,13 +324,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Invalid module ID" });
         }
         
-        // Return mock progress for demo mode
+        // If not authenticated, return a default progress object
+        // We'll use this as a basis for tracking progress even in demo mode
         return res.json({
           id: moduleId,
-          userId: "demo-user-123",
+          userId: req.isAuthenticated() ? req.user.claims.sub : "demo-user",
           moduleId: moduleId,
-          percentComplete: Math.min(100, Math.floor(Math.random() * 100) + (moduleId === 1 ? 30 : 0)),
-          completed: moduleId === 1 ? false : Math.random() > 0.7,
+          percentComplete: 0,
+          completed: false,
           lastAccessed: new Date(),
           createdAt: new Date(),
           updatedAt: new Date()
@@ -485,29 +486,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isDemo = req.headers['x-demo-mode'] === 'true';
       
       if (isDemo) {
-        // Return mock chat history for demo mode
-        return res.json([
-          {
-            id: 1,
-            userId: "demo-user-123",
-            moduleId: 1,
-            question: "What is the best social media platform for B2B marketing?",
-            answer: "LinkedIn is typically the most effective for B2B marketing as it's business-oriented.",
-            confidenceScore: 95,
-            source: "Digital Marketing Basics",
-            timestamp: new Date(Date.now() - 1000 * 60 * 30)
-          },
-          {
-            id: 2,
-            userId: "demo-user-123",
-            moduleId: 1,
-            question: "How do I measure ROI for digital marketing?",
-            answer: "Track conversions, analyze cost per acquisition, and monitor lifetime value.",
-            confidenceScore: 92,
-            source: "Advanced Analytics",
-            timestamp: new Date(Date.now() - 1000 * 60 * 60)
-          }
-        ]);
+        // Return empty array for demo mode
+        return res.json([]);
       }
       
       // Regular authentication check
@@ -537,31 +517,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (isDemo) {
-        // Return mock module-specific chat history for demo mode
-        return res.json([
-          {
-            id: 1,
-            userId: "demo-user-123",
-            moduleId: moduleId,
-            question: "What are the key metrics for " + (moduleId === 1 ? "digital marketing" : "social media marketing") + "?",
-            answer: moduleId === 1 
-              ? "Key digital marketing metrics include conversion rate, customer acquisition cost (CAC), return on ad spend (ROAS), click-through rate (CTR), and customer lifetime value (CLV)."
-              : "Key social media metrics include engagement rate, reach, impressions, share of voice, and conversion rate.",
-            confidenceScore: 95,
-            source: moduleId === 1 ? "Digital Marketing Basics" : "Social Media Marketing Guide",
-            timestamp: new Date(Date.now() - 1000 * 60 * 30)
-          },
-          {
-            id: 2,
-            userId: "demo-user-123",
-            moduleId: moduleId,
-            question: "How often should I post on social media?",
-            answer: "Posting frequency depends on the platform. For LinkedIn, 1-2 times per week is optimal. For Twitter, 3-5 times daily can be effective. For Instagram, 1-2 posts per day works well. Facebook typically performs best with 3-5 posts per week.",
-            confidenceScore: 92,
-            source: "Social Media Best Practices",
-            timestamp: new Date(Date.now() - 1000 * 60 * 60)
-          }
-        ]);
+        // Return empty array for demo mode to avoid showing canned responses
+        return res.json([]);
       }
       
       // Regular authentication check
