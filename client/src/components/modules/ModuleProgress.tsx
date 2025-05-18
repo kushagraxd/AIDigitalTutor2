@@ -9,7 +9,8 @@ interface ModuleProgressProps {
 }
 
 export default function ModuleProgress({ module, progress, totalModules }: ModuleProgressProps) {
-  const percentComplete = progress?.percentComplete || 0;
+  // Make sure to display a visible progress value (minimum 10%)
+  const percentComplete = progress?.percentComplete ?? 10;
   const moduleNumber = module.order || 1;
   
   return (

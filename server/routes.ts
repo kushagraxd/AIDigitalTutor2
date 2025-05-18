@@ -397,7 +397,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save chat history with proper error handling
       if (aiResponse.reply) {
         try {
-          await storage.createChatHistory({
+          // Log debug info
+          console.log(`Saving chat: User=${userId}, Module=${moduleId}, Question=${question.substring(0, 20)}...`);
+          
+          const savedChat = await storage.createChatHistory({
             userId,
             moduleId: moduleId ? parseInt(moduleId) : null,
             question,
@@ -405,7 +408,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             confidenceScore: Math.round(aiResponse.confidence * 100),
             source: aiResponse.source
           });
-          console.log(`Chat history saved for user ${userId} and module ${moduleId || 'none'}`);
+          
+          console.log(`Chat history saved successfully with ID: ${savedChat.id}`);
         } catch (saveError) {
           console.error("Error saving chat history:", saveError);
           // Continue with the response even if chat history saving fails
@@ -509,20 +513,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid module ID" });
       }
       
-      if (isDemo) {
-        // Return empty array for demo mode to avoid showing canned responses
-        return res.json([]);
-      }
+      // For both demo mode and authenticated users
+      let userId = "demo-user";
       
-      // Regular authentication check
-      if (!req.isAuthenticated()) {
+      // Get the user ID if authenticated
+      if (req.isAuthenticated()) {
+        userId = req.user.claims.sub;
+      } else if (!isDemo) {
+        // Only require authentication if not in demo mode
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const userId = req.user.claims.sub;
-      const limit = req.query.limit ? parseInt(req.query.limit) : 10;
+      console.log(`Fetching chat history for user ${userId} and module ${moduleId}`);
       
+      const limit = req.query.limit ? parseInt(req.query.limit) : 10;
       const history = await storage.getChatHistoryByUserAndModule(userId, moduleId, limit);
+      
+      console.log(`Found ${history.length} chat history entries`);
+      
       res.json(history);
     } catch (error) {
       console.error("Error fetching module chat history:", error);

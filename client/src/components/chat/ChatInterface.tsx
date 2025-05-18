@@ -59,8 +59,9 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
 
   // Add welcome message on first load or load from chat history
   useEffect(() => {
-    // Only process if history is loaded (prevents flickering) and no messages yet
-    if (!messages.length && isHistoryLoaded) {
+    // Only process if we have user authentication and history is loaded and no messages yet
+    if (!messages.length && isHistoryLoaded && user) {
+      // We have a specific module ID and user is logged in
       if (chatHistory && chatHistory.length > 0) {
         console.log("Loading chat history:", chatHistory.length, "messages");
         // Convert chat history to message format
@@ -87,10 +88,9 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
         }
         setMessages(formattedMessages);
         
-        // Update progress based on chat history length - each pair of messages (Q&A) counts as one exchange
-        if (moduleId && user) {
-          const exchanges = Math.floor(chatHistory.length);
-          const percentComplete = Math.min(100, Math.max(10, exchanges * 10));
+        // Update progress based on chat history length - each message counts as progress
+        if (moduleId) {
+          const percentComplete = Math.min(100, Math.max(10, chatHistory.length * 10));
           const completed = percentComplete >= 100;
           
           updateProgressMutation.mutate({
@@ -100,7 +100,7 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
           });
         }
       } else {
-        // No history, show welcome message
+        // No history, show welcome message ONLY ONCE
         const welcomeContent = `# Welcome to the ${module?.title || 'Digital Marketing'} module!
 
 I'm Professor DigiMark, your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market.
@@ -125,7 +125,7 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
         setMessages([welcomeMessage]);
         
         // Initialize module progress to at least 10% when a module is loaded
-        if (moduleId && user) {
+        if (moduleId) {
           updateProgressMutation.mutate({
             moduleId,
             percentComplete: 10,
