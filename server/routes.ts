@@ -10,7 +10,11 @@ import { addDMA2025Knowledge } from "./dma2025Knowledge";
 import { addAllModules } from "./addModules";
 import multer from "multer";
 import fs from "fs";
-import { insertModuleSchema, insertKnowledgeBaseEntrySchema } from "@shared/schema";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import { insertModuleSchema, insertKnowledgeBaseEntrySchema, users } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup file upload middleware
@@ -531,6 +535,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing file upload:", error);
       res.status(500).json({ message: "Failed to process file upload" });
+    }
+  });
+  
+  // Email/password registration
+  app.post('/api/auth/register', async (req, res) => {
+    try {
+      const { name, email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+      
+      // Check if the user already exists
+      const existingUser = await db.select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+      
+      if (existingUser.length > 0) {
+        return res.status(400).json({ message: "User with this email already exists" });
+      }
+      
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      // Generate a unique ID for the user
+      const userId = `local_${crypto.randomUUID()}`;
+      
+      // Insert user directly with the drizzle query builder to handle the password field
+      const [newUser] = await db.insert(users)
+        .values({
+          id: userId,
+          email,
+          name,
+          password: hashedPassword
+        })
+        .returning();
+      
+      // Remove the password field from the response
+      const userResponse = { ...newUser, password: undefined };
+      
+      // Auto login the user
+      req.login({
+        claims: {
+          sub: userId,
+          email: email,
+          name: name,
+        }
+      }, (err) => {
+        if (err) {
+          console.error("Login error after registration:", err);
+          return res.status(500).json({ message: "Registration successful but failed to log in" });
+        }
+        res.status(201).json(userResponse);
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Failed to register user" });
+    }
+  });
+  
+  // Email/password login
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+      
+      // Find the user
+      const [user] = await db.select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+      
+      if (!user || !user.password) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      // Check password
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      
+      if (!passwordMatch) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      // Remove the password from the response
+      const userResponse = { ...user, password: undefined };
+      
+      // Log the user in
+      req.login({
+        claims: {
+          sub: user.id,
+          email: user.email,
+          name: user.name,
+        }
+      }, (err) => {
+        if (err) {
+          console.error("Login error:", err);
+          return res.status(500).json({ message: "Login failed" });
+        }
+        res.json(userResponse);
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ message: "Login failed" });
     }
   });
   

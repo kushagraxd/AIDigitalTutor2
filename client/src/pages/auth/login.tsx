@@ -99,15 +99,22 @@ export default function AuthPage() {
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     try {
-      // This will be implemented on the server soon
-      toast({
-        title: "Email/Password Login",
-        description: "This feature will be implemented soon. Please use Replit login for now.",
-      });
+      const response = await apiRequest('POST', '/api/auth/login', data);
+      if (response.ok) {
+        const user = await response.json();
+        toast({
+          title: "Login Successful",
+          description: "You have been logged in successfully.",
+        });
+        setLocation('/');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Login failed");
+      }
     } catch (error) {
       toast({
         title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        description: error.message || "Invalid email or password. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -119,15 +126,31 @@ export default function AuthPage() {
   const onRegisterSubmit = async (data: RegisterFormValues) => {
     setIsSubmitting(true);
     try {
-      // This will be implemented on the server soon
-      toast({
-        title: "Registration",
-        description: "This feature will be implemented soon. Please use Replit login for now.",
+      if (data.password !== data.confirmPassword) {
+        throw new Error("Passwords don't match");
+      }
+      
+      const response = await apiRequest('POST', '/api/auth/register', {
+        name: data.name,
+        email: data.email,
+        password: data.password
       });
+      
+      if (response.ok) {
+        const user = await response.json();
+        toast({
+          title: "Registration Successful",
+          description: "Your account has been created successfully. You can now log in.",
+        });
+        setAuthMode('login');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Registration failed");
+      }
     } catch (error) {
       toast({
         title: "Registration Failed",
-        description: "Failed to create account. Please try again.",
+        description: error.message || "Failed to create account. Please try again.",
         variant: "destructive",
       });
     } finally {

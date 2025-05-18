@@ -38,6 +38,7 @@ export const users = pgTable("users", {
   interests: varchar("interests"),
   goals: varchar("goals"),
   educationLevel: varchar("education_level"),
+  password: varchar("password"), // For email/password authentication
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
