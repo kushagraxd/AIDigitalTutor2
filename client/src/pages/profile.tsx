@@ -59,19 +59,24 @@ export default function ProfilePage() {
 
   // Update form values when profile data is loaded
   React.useEffect(() => {
-    if (profile) {
+    if (user) {
+      // Try to pre-fill form with user data from auth
+      const defaultName = user.name || 
+        (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : "") || 
+        user.email?.split('@')[0] || "";
+      
       form.reset({
-        name: profile.name || "",
-        mobileNumber: profile.mobileNumber || "",
-        profession: profile.profession || "",
-        collegeOrUniversity: profile.collegeOrUniversity || "",
-        gender: profile.gender || "prefer_not_to_say",
-        interests: profile.interests || "",
-        goals: profile.goals || "",
-        educationLevel: profile.educationLevel || "",
+        name: user.name || defaultName,
+        mobileNumber: user.mobileNumber || "",
+        profession: user.profession || "",
+        collegeOrUniversity: user.collegeOrUniversity || "",
+        gender: user.gender || "prefer_not_to_say",
+        interests: user.interests || "",
+        goals: user.goals || "",
+        educationLevel: user.educationLevel || "",
       });
     }
-  }, [profile, form]);
+  }, [user, form]);
 
   // Mutation to update profile
   const updateProfileMutation = useMutation({

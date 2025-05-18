@@ -116,19 +116,37 @@ export async function setupAuth(app: Express) {
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
-          // Create or update user from Google profile
+          console.log("Google auth callback received for:", profile.displayName);
+          
+          // Create a consistent user ID for Google users
+          const userId = `google-${profile.id}`;
+          
+          // Create or update user from Google profile with required profile fields
+          // This ensures the user entity has all the fields needed for the profile page
           const user = await storage.upsertUser({
-            id: profile.id,
+            id: userId,
             email: profile.emails?.[0]?.value,
             firstName: profile.name?.givenName,
             lastName: profile.name?.familyName,
-            profileImageUrl: profile.photos?.[0]?.value
+            profileImageUrl: profile.photos?.[0]?.value,
+            // Set default values for required profile fields
+            name: profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim(),
+            mobileNumber: "",  // Will be updated in profile
+            profession: "",    // Will be updated in profile
+            gender: "",        // Will be updated in profile
+            // Optional fields
+            collegeOrUniversity: "",
+            interests: "",
+            goals: "", 
+            educationLevel: ""
           });
           
-          // Create a user session object similar to Replit Auth
+          console.log("User saved/updated in database:", userId);
+          
+          // Create a user session object similar to Replit Auth for consistency
           const userSession = {
             claims: {
-              sub: profile.id,
+              sub: userId,
               email: profile.emails?.[0]?.value,
               first_name: profile.name?.givenName,
               last_name: profile.name?.familyName,
@@ -142,6 +160,7 @@ export async function setupAuth(app: Express) {
           
           return done(null, userSession);
         } catch (error) {
+          console.error("Error in Google authentication:", error);
           return done(error as Error);
         }
       }
@@ -184,32 +203,34 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/auth/google/callback", (req, res, next) => {
-    console.log("Google callback route hit", req.hostname);
+    console.log("Google callback route hit with hostname:", req.hostname);
     
-    // Add more detailed logging
-    passport.authenticate("google", { 
-      successRedirect: "/",
+    passport.authenticate("google", {
       failureRedirect: "/auth"
     }, (err, user, info) => {
       if (err) {
         console.error("Google auth error:", err);
-        return res.redirect("/auth");
+        return res.redirect("/auth?error=google_auth_error");
       }
       
       if (!user) {
         console.error("Google auth failed:", info);
-        return res.redirect("/auth");
+        return res.redirect("/auth?error=google_user_missing");
       }
       
       // Log the user in
       req.login(user, (loginErr) => {
         if (loginErr) {
           console.error("Google login error:", loginErr);
-          return res.redirect("/auth");
+          return res.redirect("/auth?error=session_error");
         }
         
-        console.log("Google login successful");
-        res.redirect("/");
+        console.log("Google login successful, redirecting to home");
+        
+        // Force a small delay to ensure session is saved
+        setTimeout(() => {
+          res.redirect("/");
+        }, 100);
       });
     })(req, res, next);
   });
