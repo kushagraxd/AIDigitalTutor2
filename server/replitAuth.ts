@@ -105,7 +105,7 @@ export async function setupAuth(app: Express) {
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "https://ecda83ff-e2ea-4f56-b517-710d4ef97d7c-00-1cfhto9f6dnqi.spock.replit.dev/api/auth/google/callback",
+        callbackURL: "/api/auth/google/callback",
         proxy: true
       },
       async (accessToken, refreshToken, profile, done) => {
@@ -163,16 +163,20 @@ export async function setupAuth(app: Express) {
   });
 
   // Google Auth routes
-  app.get("/api/auth/google", passport.authenticate("google", { 
-    scope: ["profile", "email"] 
-  }));
-
-  app.get("/api/auth/google/callback", 
+  app.get("/api/auth/google", (req, res, next) => {
+    console.log("Google login route hit");
     passport.authenticate("google", { 
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/login" 
-    })
-  );
+      scope: ["profile", "email"] 
+    })(req, res, next);
+  });
+
+  app.get("/api/auth/google/callback", (req, res, next) => {
+    console.log("Google callback route hit");
+    passport.authenticate("google", { 
+      successRedirect: "/",
+      failureRedirect: "/auth" 
+    })(req, res, next);
+  });
 
   // Shared logout route
   app.get("/api/logout", (req, res) => {

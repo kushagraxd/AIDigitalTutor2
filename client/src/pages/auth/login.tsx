@@ -64,6 +64,7 @@ export default function AuthPage() {
   
   // Login with Google
   const handleGoogleLogin = () => {
+    console.log("Starting Google login...");
     window.location.href = "/api/auth/google";
   };
   
@@ -99,19 +100,31 @@ export default function AuthPage() {
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     try {
+      console.log("Login attempt with:", { email: data.email });
       const response = await apiRequest('POST', '/api/auth/login', data);
+      console.log("Login response status:", response.status);
+      
       if (response.ok) {
         const user = await response.json();
+        console.log("Login successful, user:", user);
         toast({
           title: "Login Successful",
           description: "You have been logged in successfully.",
         });
         setLocation('/');
       } else {
-        const errorData = await response.json();
+        const errorText = await response.text();
+        console.error("Login error response:", errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { message: errorText };
+        }
         throw new Error(errorData.message || "Login failed");
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         title: "Login Failed",
         description: error.message || "Invalid email or password. Please try again.",
@@ -130,24 +143,37 @@ export default function AuthPage() {
         throw new Error("Passwords don't match");
       }
       
+      console.log("Registration attempt with:", { name: data.name, email: data.email });
+      
       const response = await apiRequest('POST', '/api/auth/register', {
         name: data.name,
         email: data.email,
         password: data.password
       });
       
+      console.log("Registration response status:", response.status);
+      
       if (response.ok) {
         const user = await response.json();
+        console.log("Registration successful, user:", user);
         toast({
           title: "Registration Successful",
           description: "Your account has been created successfully. You can now log in.",
         });
         setAuthMode('login');
       } else {
-        const errorData = await response.json();
+        const errorText = await response.text();
+        console.error("Registration error response:", errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { message: errorText };
+        }
         throw new Error(errorData.message || "Registration failed");
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Registration error:", error);
       toast({
         title: "Registration Failed",
         description: error.message || "Failed to create account. Please try again.",
