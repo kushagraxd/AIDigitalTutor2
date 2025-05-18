@@ -166,6 +166,8 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
       const response = await apiRequest("POST", "/api/chat", requestData);
       const data = response;
       
+      console.log("Chat API response:", data);
+      
       // Parse AI response
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
@@ -176,6 +178,8 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
         confidence: typeof data === 'object' ? data.confidence : undefined,
         source: typeof data === 'object' ? data.source : undefined
       };
+      
+      console.log("Created AI message:", aiMessage);
       
       setMessages(prev => [...prev, aiMessage]);
       
