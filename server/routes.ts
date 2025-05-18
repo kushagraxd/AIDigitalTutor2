@@ -547,6 +547,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Email and password are required" });
       }
       
+      console.log("Registration request:", { name, email, passwordLength: password?.length });
+      
       // Check if the user already exists
       const existingUser = await db.select()
         .from(users)
@@ -563,36 +565,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a unique ID for the user
       const userId = `local_${crypto.randomUUID()}`;
       
-      // Insert user directly with the drizzle query builder to handle the password field
-      const [newUser] = await db.insert(users)
-        .values({
-          id: userId,
-          email,
-          name,
-          password: hashedPassword
-        })
-        .returning();
+      console.log("Inserting new user with ID:", userId);
       
-      // Remove the password field from the response
-      const userResponse = { ...newUser, password: undefined };
-      
-      // Auto login the user
-      req.login({
-        claims: {
-          sub: userId,
-          email: email,
-          name: name,
-        }
-      }, (err) => {
-        if (err) {
-          console.error("Login error after registration:", err);
-          return res.status(500).json({ message: "Registration successful but failed to log in" });
-        }
-        res.status(201).json(userResponse);
-      });
+      try {
+        // Insert user directly with the drizzle query builder to handle the password field
+        const [newUser] = await db.insert(users)
+          .values({
+            id: userId,
+            email,
+            name,
+            password: hashedPassword
+          })
+          .returning();
+        
+        console.log("User inserted successfully:", { id: newUser.id, email: newUser.email });
+        
+        // Remove the password field from the response
+        const userResponse = { ...newUser, password: undefined };
+        
+        // Auto login the user
+        req.login({
+          claims: {
+            sub: userId,
+            email: email,
+            name: name,
+          }
+        }, (err) => {
+          if (err) {
+            console.error("Login error after registration:", err);
+            return res.status(500).json({ message: "Registration successful but failed to log in" });
+          }
+          
+          console.log("User logged in after registration");
+          res.status(201).json(userResponse);
+        });
+      } catch (dbError) {
+        console.error("Database error during registration:", dbError);
+        res.status(500).json({ message: "Database error during registration", error: dbError.message });
+      }
     } catch (error) {
       console.error("Registration error:", error);
-      res.status(500).json({ message: "Failed to register user" });
+      res.status(500).json({ message: "Failed to register user", error: error.message });
     }
   });
   

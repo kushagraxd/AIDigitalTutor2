@@ -105,7 +105,7 @@ export async function setupAuth(app: Express) {
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}/api/auth/google/callback`,
+        callbackURL: "https://ecda83ff-e2ea-4f56-b517-710d4ef97d7c-00-1cfhto9f6dnqi.spock.replit.dev/api/auth/google/callback",
         proxy: true
       },
       async (accessToken, refreshToken, profile, done) => {
