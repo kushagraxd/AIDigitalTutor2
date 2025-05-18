@@ -540,3 +540,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
 ```
 
 // End of routes configuration
+export default registerRoutes;
