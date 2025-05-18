@@ -1,9 +1,9 @@
 import express from 'express';
 import session from 'express-session';
-import { setupViteServer } from './vite';
-import { setupRoutes } from './routes';
+import { setupVite, serveStatic, log } from './vite';
+import { registerRoutes } from './routes';
 import { setupAuth } from './replitAuth';
-import { log } from './vite';
+import { createServer } from 'http';
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -21,14 +21,23 @@ app.use(express.json());
 // Setup authentication
 setupAuth(app);
 
-// Setup routes
-setupRoutes(app);
+// Create HTTP server
+const httpServer = createServer(app);
 
-// Setup Vite in development
-if (process.env.NODE_ENV === 'development') {
-  setupViteServer(app);
-}
+// Register routes
+registerRoutes(app).then(() => {
+  // Setup Vite for development or serve static files for production
+  if (process.env.NODE_ENV === 'development') {
+    setupVite(app, httpServer);
+  } else {
+    serveStatic(app);
+  }
 
-app.listen(port, '0.0.0.0', () => {
-  log(`serving on port ${port}`, 'express');
+  // Start the server
+  httpServer.listen(port, '0.0.0.0', () => {
+    log(`serving on port ${port}`, 'express');
+  });
+}).catch(err => {
+  console.error('Failed to register routes:', err);
+  process.exit(1);
 });
