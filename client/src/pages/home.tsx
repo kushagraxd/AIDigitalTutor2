@@ -28,24 +28,11 @@ export default function Home() {
               <div className="w-3 h-3 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0.2s" }}></div>
               <div className="w-3 h-3 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0.4s" }}></div>
             </div>
-            <p className="mt-4 text-neutral-gray">Loading your personalized learning path...</p>
+            <p className="mt-4 text-neutral-gray">Loading modules...</p>
           </div>
         </div>
       ) : (
         <>
-          {/* Continue Learning Section */}
-          {currentModule && (
-            <section className="mb-8">
-              <h2 className="text-xl font-heading font-semibold mb-4">Continue Learning</h2>
-              <div className="max-w-md">
-                <ModuleCard 
-                  module={currentModule} 
-                  progress={progress?.find(p => p.moduleId === currentModule.id)}
-                />
-              </div>
-            </section>
-          )}
-          
           {/* All Modules Section */}
           <section>
             <h2 className="text-xl font-heading font-semibold mb-4">All Modules</h2>
@@ -56,7 +43,6 @@ export default function Home() {
                   <ModuleCard 
                     key={module.id} 
                     module={module} 
-                    progress={progress?.find(p => p.moduleId === module.id)}
                   />
                 ))}
               </div>
