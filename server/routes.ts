@@ -235,17 +235,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Found existing user:", { id: existingUser.id, email: existingUser.email });
       
+      // Validate required fields
+      const { name, mobileNumber, profession, gender } = req.body;
+      if (!name || !mobileNumber || !profession || !gender) {
+        console.error("Missing required fields:", { name, mobileNumber, profession, gender });
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      console.log("Processing profile update with data:", {
+        id: userId,
+        name: req.body.name,
+        profession: req.body.profession
+      });
+      
       // Create updated user data
       const userData = {
         id: userId,
-        // Preserve existing database data
+        
+        // Essential fields that must be preserved
         email: existingUser.email,
+        password: existingUser.password, // Keep existing password if any
+        
+        // Preserve OAuth data if exists
         firstName: existingUser.firstName,
         lastName: existingUser.lastName,
         profileImageUrl: existingUser.profileImageUrl,
-        password: existingUser.password, // Keep existing password if any
-        // Update with OAuth claims if available (important for OAuth users)
+        
+        // Update with any new OAuth claims (important for OAuth users)
         ...existingClaims,
+        
         // Update profile data from request
         name: req.body.name,
         mobileNumber: req.body.mobileNumber,
