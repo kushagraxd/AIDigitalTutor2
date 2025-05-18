@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import ChatInterface from "@/components/chat/ChatInterface";
 import ModuleHeader from "@/components/modules/ModuleHeader";
 import { useAuth } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Module } from "@shared/schema";
 import Profile from "@/pages/profile";
 
@@ -86,12 +87,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Layout>
-          <Router />
-        </Layout>
-        <Toaster />
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Layout>
+            <Router />
+          </Layout>
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

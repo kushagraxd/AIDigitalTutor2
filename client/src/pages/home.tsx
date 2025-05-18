@@ -70,10 +70,10 @@ export default function Home() {
           
           <div className="bg-white p-4 rounded-lg shadow-sm">
             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-              <span className="material-icons text-primary">mic</span>
+              <span className="material-icons text-primary">psychology</span>
             </div>
-            <h3 className="font-medium mb-2">Voice Interface</h3>
-            <p className="text-sm text-neutral-gray">Ask questions and get answers using natural voice conversations.</p>
+            <h3 className="font-medium mb-2">Adaptive Learning</h3>
+            <p className="text-sm text-neutral-gray">AI automatically adjusts to your knowledge level and learning pace.</p>
           </div>
           
           <div className="bg-white p-4 rounded-lg shadow-sm">
