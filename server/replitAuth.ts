@@ -171,10 +171,33 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/auth/google/callback", (req, res, next) => {
-    console.log("Google callback route hit");
+    console.log("Google callback route hit", req.hostname);
+    
+    // Add more detailed logging
     passport.authenticate("google", { 
       successRedirect: "/",
-      failureRedirect: "/auth" 
+      failureRedirect: "/auth"
+    }, (err, user, info) => {
+      if (err) {
+        console.error("Google auth error:", err);
+        return res.redirect("/auth");
+      }
+      
+      if (!user) {
+        console.error("Google auth failed:", info);
+        return res.redirect("/auth");
+      }
+      
+      // Log the user in
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Google login error:", loginErr);
+          return res.redirect("/auth");
+        }
+        
+        console.log("Google login successful");
+        res.redirect("/");
+      });
     })(req, res, next);
   });
 

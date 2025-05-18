@@ -65,7 +65,20 @@ export default function AuthPage() {
   // Login with Google
   const handleGoogleLogin = () => {
     console.log("Starting Google login...");
-    window.location.href = "/api/auth/google";
+    // Show loading indicator
+    setIsSubmitting(true);
+    try {
+      // Redirect to Google login
+      window.location.href = "/api/auth/google";
+    } catch (error) {
+      console.error("Google login error:", error);
+      setIsSubmitting(false);
+      toast({
+        title: "Login Failed",
+        description: "Could not start Google authentication. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   // Login form

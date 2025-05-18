@@ -674,22 +674,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Found ${usersFound.length} users with email:`, email);
       
-      if (usersFound.length === 0 || !usersFound[0].password) {
-        console.log("Login failed: User not found or no password set");
+      if (usersFound.length === 0) {
+        console.log("Login failed: User not found with email:", email);
         return res.status(401).json({ message: "Invalid email or password" });
       }
       
       const user = usersFound[0];
       
-      // Check password
-      console.log("Verifying password...");
-      
-      // Make sure password exists before comparing
+      // Check if user was created with OAuth (Google/Replit) and has no password
       if (!user.password) {
-        console.log("Login failed: User doesn't have a password set");
-        return res.status(401).json({ message: "Invalid email or password" });
+        console.log("Login failed: This account doesn't use password authentication");
+        return res.status(401).json({ 
+          message: "This email address is registered with a social login method. Please use Google or Replit login instead."
+        });
       }
       
+      // Check password
+      console.log("Verifying password...");
       const passwordMatch = await bcrypt.compare(password, user.password);
       
       if (!passwordMatch) {
