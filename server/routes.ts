@@ -35,6 +35,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Demo login endpoint
+  app.post('/api/auth/demo-login', async (req, res) => {
+    try {
+      console.log("Demo login requested");
+      
+      // Check if demo user exists
+      const demoEmail = "demo@example.com";
+      const demoUserId = "demo-user-123";
+      
+      let demoUser = await storage.getUser(demoUserId);
+      
+      // Create demo user if it doesn't exist
+      if (!demoUser) {
+        console.log("Creating demo user");
+        const hashedPassword = await bcrypt.hash("demo123", 10);
+        
+        try {
+          demoUser = await storage.upsertUser({
+            id: demoUserId,
+            email: demoEmail,
+            name: "Demo User",
+            password: hashedPassword
+          });
+          console.log("Demo user created:", demoUser);
+        } catch (err) {
+          console.error("Failed to create demo user:", err);
+          return res.status(500).json({ message: "Failed to create demo account" });
+        }
+      }
+      
+      // Login as demo user
+      req.login(demoUser, (err) => {
+        if (err) {
+          console.error("Demo login error:", err);
+          return res.status(500).json({ message: "Failed to login as demo user" });
+        }
+        
+        console.log("Demo login successful");
+        // Remove password from response
+        const { password, ...userWithoutPassword } = demoUser;
+        return res.status(200).json(userWithoutPassword);
+      });
+    } catch (error) {
+      console.error("Demo login error:", error);
+      res.status(500).json({ message: "Failed to process demo login" });
+    }
+  });
+  
   // Auth routes - Get current user
   app.get('/api/auth/user', async (req: any, res) => {
     try {

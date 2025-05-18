@@ -77,6 +77,39 @@ export default function AuthPage() {
     window.location.href = "/api/auth/google";
   };
   
+  // Demo login function
+  const handleDemoLogin = async () => {
+    setIsSubmitting(true);
+    try {
+      console.log("Attempting demo login");
+      
+      const response = await apiRequest('POST', '/api/auth/demo-login', {});
+      console.log("Demo login response:", response.status);
+      
+      if (response.ok) {
+        const user = await response.json();
+        console.log("Demo login successful:", user);
+        toast({
+          title: "Login Successful",
+          description: "You have been logged in with a demo account.",
+        });
+        setLocation('/');
+      } else {
+        const error = await response.text();
+        throw new Error(error || "Demo login failed");
+      }
+    } catch (error) {
+      console.error("Demo login error:", error);
+      toast({
+        title: "Demo Login Failed",
+        description: "Could not access demo account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
   // Login form
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -292,6 +325,32 @@ export default function AuthPage() {
                       </>
                     ) : (
                       "Login"
+                    )}
+                  </Button>
+                  
+                  <div className="relative my-4">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">Or access demo account</span>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    className="w-full"
+                    variant="outline"
+                    onClick={handleDemoLogin}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <span className="animate-spin mr-2 h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></span>
+                        Please wait...
+                      </>
+                    ) : (
+                      "Use Demo Account"
                     )}
                   </Button>
                 </form>
