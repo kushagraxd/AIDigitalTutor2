@@ -38,33 +38,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes - Get current user
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      // Check if user is authenticated through Replit Auth
+      console.log("Auth check - isAuthenticated:", req.isAuthenticated());
+      
+      // Check if user is authenticated
       if (!req.isAuthenticated()) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const userId = req.user.claims.sub;
+      console.log("Authenticated user session:", req.user);
       
-      // Get or create user
+      let userId;
+      
+      // Handle different authentication types
+      if (req.user.claims && req.user.claims.sub) {
+        // OAuth (Replit/Google) authentication
+        userId = req.user.claims.sub;
+      } else if (req.user.id) {
+        // Email/password authentication
+        userId = req.user.id;
+      } else {
+        console.error("Unknown authentication type:", req.user);
+        return res.status(500).json({ message: "Unknown authentication type" });
+      }
+      
+      console.log("Fetching user with ID:", userId);
+      
+      // Get user from database
       let user = await storage.getUser(userId);
       
-      // If user doesn't exist, create from claims
       if (!user) {
+        console.log("User not found in database, creating new record");
+        
         try {
-          user = await storage.upsertUser({
-            id: userId,
-            email: req.user.claims.email,
-            firstName: req.user.claims.first_name,
-            lastName: req.user.claims.last_name,
-            profileImageUrl: req.user.claims.profile_image_url,
-          });
+          // Create user data based on auth type
+          const userData: any = { id: userId };
+          
+          if (req.user.claims) {
+            // OAuth login
+            userData.email = req.user.claims.email;
+            userData.firstName = req.user.claims.first_name;
+            userData.lastName = req.user.claims.last_name;
+            userData.profileImageUrl = req.user.claims.profile_image_url;
+          } else {
+            // Email login - this shouldn't happen as users are created during registration
+            userData.email = req.user.email;
+            userData.name = req.user.name;
+          }
+          
+          user = await storage.upsertUser(userData);
         } catch (err) {
-          console.error("Error creating user from claims:", err);
+          console.error("Error creating user:", err);
           return res.status(500).json({ message: "Failed to create user" });
         }
       }
       
-      res.json(user);
+      // Return user without sensitive data
+      const { password, ...safeUser } = user;
+      res.json(safeUser);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -538,6 +568,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Debug endpoint to check the session
+  app.get('/api/debug/session', (req: any, res) => {
+    res.json({
+      isAuthenticated: req.isAuthenticated(),
+      session: req.session,
+      user: req.isAuthenticated() ? req.user : null
+    });
+  });
+
   // Email/password registration
   app.post('/api/auth/register', async (req, res) => {
     try {
@@ -556,6 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(1);
       
       if (existingUser.length > 0) {
+        console.log("Registration failed: Email already exists");
         return res.status(400).json({ message: "User with this email already exists" });
       }
       
@@ -565,10 +605,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a unique ID for the user
       const userId = `local_${crypto.randomUUID()}`;
       
-      console.log("Inserting new user with ID:", userId);
+      console.log("Creating new user with ID:", userId);
       
       try {
-        // Insert user directly with the drizzle query builder to handle the password field
+        // Insert user with all required fields
         const [newUser] = await db.insert(users)
           .values({
             id: userId,
@@ -578,83 +618,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .returning();
         
-        console.log("User inserted successfully:", { id: newUser.id, email: newUser.email });
+        console.log("User created successfully:", { id: newUser.id, email: newUser.email });
         
-        // Remove the password field from the response
-        const userResponse = { ...newUser, password: undefined };
+        // Remove the password from the response
+        const { password: _, ...userWithoutPassword } = newUser;
         
-        // Auto login the user
-        req.login({
-          claims: {
-            sub: userId,
-            email: email,
-            name: name,
-          }
-        }, (err) => {
+        // Log the user in immediately
+        req.login(newUser, (err) => {
           if (err) {
-            console.error("Login error after registration:", err);
-            return res.status(500).json({ message: "Registration successful but failed to log in" });
+            console.error("Auto-login error:", err);
+            return res.status(201).json({ 
+              ...userWithoutPassword,
+              message: "Account created successfully. Please log in." 
+            });
           }
           
-          console.log("User logged in after registration");
-          res.status(201).json(userResponse);
+          console.log("User automatically logged in after registration");
+          res.status(201).json({
+            ...userWithoutPassword,
+            message: "Account created and logged in successfully."
+          });
         });
-      } catch (dbError) {
+      } catch (dbError: any) {
         console.error("Database error during registration:", dbError);
-        res.status(500).json({ message: "Database error during registration", error: dbError.message });
+        res.status(500).json({ 
+          message: "Error creating account", 
+          error: dbError.message 
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration error:", error);
-      res.status(500).json({ message: "Failed to register user", error: error.message });
+      res.status(500).json({ 
+        message: "Failed to register user", 
+        error: error.message 
+      });
     }
   });
   
   // Email/password login
   app.post('/api/auth/login', async (req, res) => {
     try {
+      console.log("Login attempt received:", req.body);
       const { email, password } = req.body;
       
       if (!email || !password) {
+        console.log("Login failed: Email or password missing");
         return res.status(400).json({ message: "Email and password are required" });
       }
       
-      // Find the user
-      const [user] = await db.select()
+      // Find the user by email
+      console.log("Looking for user with email:", email);
+      const usersFound = await db.select()
         .from(users)
-        .where(eq(users.email, email))
-        .limit(1);
+        .where(eq(users.email, email));
       
-      if (!user || !user.password) {
+      console.log(`Found ${usersFound.length} users with email:`, email);
+      
+      if (usersFound.length === 0 || !usersFound[0].password) {
+        console.log("Login failed: User not found or no password set");
         return res.status(401).json({ message: "Invalid email or password" });
       }
       
+      const user = usersFound[0];
+      
       // Check password
+      console.log("Verifying password...");
+      
+      // Make sure password exists before comparing
+      if (!user.password) {
+        console.log("Login failed: User doesn't have a password set");
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
       const passwordMatch = await bcrypt.compare(password, user.password);
       
       if (!passwordMatch) {
+        console.log("Login failed: Password doesn't match");
         return res.status(401).json({ message: "Invalid email or password" });
       }
       
-      // Remove the password from the response
-      const userResponse = { ...user, password: undefined };
+      console.log("Password verified, creating session");
       
-      // Log the user in
-      req.login({
-        claims: {
-          sub: user.id,
-          email: user.email,
-          name: user.name,
-        }
-      }, (err) => {
+      // Remove the password from the response
+      const { password: _, ...userWithoutPassword } = user;
+      
+      // Create a user session
+      req.login(user, (err) => {
         if (err) {
-          console.error("Login error:", err);
-          return res.status(500).json({ message: "Login failed" });
+          console.error("Login session error:", err);
+          return res.status(500).json({ message: "Failed to create login session" });
         }
-        res.json(userResponse);
+        
+        console.log("Login successful, user ID:", user.id);
+        res.status(200).json(userWithoutPassword);
       });
     } catch (error) {
       console.error("Login error:", error);
-      res.status(500).json({ message: "Login failed" });
+      res.status(500).json({ message: "An error occurred during login" });
     }
   });
   
