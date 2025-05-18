@@ -105,7 +105,7 @@ export async function setupAuth(app: Express) {
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "/api/auth/google/callback",
+        callbackURL: "https://ecda83ff-e2ea-4f56-b517-710d4ef97d7c-00-1cfhto9f6dnqi.spock.replit.dev/api/auth/google/callback",
         proxy: true
       },
       async (accessToken, refreshToken, profile, done) => {
@@ -164,9 +164,16 @@ export async function setupAuth(app: Express) {
 
   // Google Auth routes
   app.get("/api/auth/google", (req, res, next) => {
-    console.log("Google login route hit");
+    console.log("Google login route hit with hostname:", req.hostname);
+    
+    // Log Google auth credentials status
+    console.log("Google auth credentials available:", {
+      clientId: !!process.env.GOOGLE_CLIENT_ID,
+      clientSecret: !!process.env.GOOGLE_CLIENT_SECRET
+    });
+    
     passport.authenticate("google", { 
-      scope: ["profile", "email"] 
+      scope: ["profile", "email"]
     })(req, res, next);
   });
 

@@ -65,20 +65,16 @@ export default function AuthPage() {
   // Login with Google
   const handleGoogleLogin = () => {
     console.log("Starting Google login...");
+    toast({
+      title: "Google authentication",
+      description: "Please make sure your Google API credentials are correctly configured in the Google Console with the correct callback URL.",
+    });
     // Show loading indicator
     setIsSubmitting(true);
-    try {
-      // Redirect to Google login
-      window.location.href = "/api/auth/google";
-    } catch (error) {
-      console.error("Google login error:", error);
-      setIsSubmitting(false);
-      toast({
-        title: "Login Failed",
-        description: "Could not start Google authentication. Please try again.",
-        variant: "destructive"
-      });
-    }
+    
+    // The correct callback URL format should be:
+    // https://your-replit-domain.replit.dev/api/auth/google/callback
+    window.location.href = "/api/auth/google";
   };
   
   // Login form
