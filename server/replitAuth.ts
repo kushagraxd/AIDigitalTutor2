@@ -102,10 +102,16 @@ export async function setupAuth(app: Express) {
 
   // Configure Google Auth
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    // Get the first domain from REPLIT_DOMAINS for the callback URL
+    const primaryDomain = process.env.REPLIT_DOMAINS!.split(",")[0];
+    const callbackURL = `https://${primaryDomain}/api/auth/google/callback`;
+    
+    console.log("Setting up Google OAuth with callback URL:", callbackURL);
+    
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "https://ecda83ff-e2ea-4f56-b517-710d4ef97d7c-00-1cfhto9f6dnqi.spock.replit.dev/api/auth/google/callback",
+        callbackURL: callbackURL,
         proxy: true
       },
       async (accessToken, refreshToken, profile, done) => {
