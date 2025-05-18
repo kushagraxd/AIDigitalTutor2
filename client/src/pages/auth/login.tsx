@@ -64,10 +64,7 @@ export default function AuthPage() {
   
   // Login with Google
   const handleGoogleLogin = () => {
-    toast({
-      title: "Google Sign In",
-      description: "This feature will be implemented soon.",
-    });
+    window.location.href = "/api/auth/google";
   };
   
   // Login form

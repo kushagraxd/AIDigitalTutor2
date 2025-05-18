@@ -34,7 +34,7 @@ registerRoutes(app).then(() => {
   }
 
   // Start the server
-  httpServer.listen(port, '0.0.0.0', () => {
+  httpServer.listen(Number(port), '0.0.0.0', () => {
     log(`serving on port ${port}`, 'express');
   });
 }).catch(err => {
