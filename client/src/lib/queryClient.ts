@@ -14,7 +14,7 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
-): Promise<Response> {
+): Promise<any> {
   // Check if in demo mode
   const isDemoMode = localStorage.getItem('demoMode') === 'true';
   
@@ -32,7 +32,14 @@ export async function apiRequest(
   });
 
   await throwIfResNotOk(res);
-  return res;
+  
+  // Parse JSON response
+  try {
+    return await res.json();
+  } catch (e) {
+    // Return empty object if not JSON
+    return {};
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

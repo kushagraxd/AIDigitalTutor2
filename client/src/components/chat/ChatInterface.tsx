@@ -164,19 +164,19 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
       
       // Send request to the API
       const response = await apiRequest("POST", "/api/chat", requestData);
-      const data = response;
       
-      console.log("Chat API response:", data);
+      // Extract the data from the response
+      console.log("Chat API response:", response);
       
       // Parse AI response
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
         type: 'ai',
-        content: typeof data === 'object' && data.reply ? data.reply : String(data),
+        content: response.reply || "Sorry, I couldn't generate a response. Please try again.",
         timestamp: new Date(),
         markdown: true,
-        confidence: typeof data === 'object' ? data.confidence : undefined,
-        source: typeof data === 'object' ? data.source : undefined
+        confidence: response.confidence,
+        source: response.source
       };
       
       console.log("Created AI message:", aiMessage);
