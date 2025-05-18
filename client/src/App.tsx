@@ -85,17 +85,6 @@ function ModulePage() {
     <>
       <div className="bg-white border-b border-neutral-medium p-4">
         <ModuleHeader module={module} />
-        
-        {/* Progress tracking */}
-        <div className="mt-4">
-          {allModules && (
-            <ModuleProgress 
-              module={module} 
-              progress={progress} 
-              totalModules={allModules.length} 
-            />
-          )}
-        </div>
       </div>
       <ChatInterface moduleId={moduleId} module={module} />
     </>
