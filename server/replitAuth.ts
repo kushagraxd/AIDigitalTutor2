@@ -1,5 +1,6 @@
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 
 import passport from "passport";
 import session from "express-session";
@@ -72,6 +73,7 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Configure Replit Auth
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
@@ -98,9 +100,54 @@ export async function setupAuth(app: Express) {
     passport.use(strategy);
   }
 
+  // Configure Google Auth
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(new GoogleStrategy({
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: `/api/auth/google/callback`,
+        proxy: true
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          // Create or update user from Google profile
+          const user = await storage.upsertUser({
+            id: profile.id,
+            email: profile.emails?.[0]?.value,
+            firstName: profile.name?.givenName,
+            lastName: profile.name?.familyName,
+            profileImageUrl: profile.photos?.[0]?.value
+          });
+          
+          // Create a user session object similar to Replit Auth
+          const userSession = {
+            claims: {
+              sub: profile.id,
+              email: profile.emails?.[0]?.value,
+              first_name: profile.name?.givenName,
+              last_name: profile.name?.familyName,
+              profile_image_url: profile.photos?.[0]?.value,
+              iat: Math.floor(Date.now() / 1000),
+              exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
+            },
+            access_token: accessToken,
+            refresh_token: refreshToken
+          };
+          
+          return done(null, userSession);
+        } catch (error) {
+          return done(error as Error);
+        }
+      }
+    ));
+  } else {
+    console.warn("Google OAuth credentials not found. Google login will be disabled.");
+  }
+
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
+  // Replit Auth routes
   app.get("/api/login", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
@@ -115,14 +162,33 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
+  // Google Auth routes
+  app.get("/api/auth/google", passport.authenticate("google", { 
+    scope: ["profile", "email"] 
+  }));
+
+  app.get("/api/auth/google/callback", 
+    passport.authenticate("google", { 
+      successReturnToOrRedirect: "/",
+      failureRedirect: "/login" 
+    })
+  );
+
+  // Shared logout route
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+      // If it was a Replit login, use their logout URL
+      if (req.user && (req.user as any).claims?.iss === "https://replit.com/oidc") {
+        res.redirect(
+          client.buildEndSessionUrl(config, {
+            client_id: process.env.REPL_ID!,
+            post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+          }).href
+        );
+      } else {
+        // Otherwise just redirect to home
+        res.redirect("/");
+      }
     });
   });
 }
