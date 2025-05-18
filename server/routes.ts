@@ -533,6 +533,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to process file upload" });
     }
   });
+  
+  // API endpoint for message feedback
+  app.post('/api/feedback', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { messageId, isHelpful, comments } = req.body;
+      
+      if (!messageId || typeof isHelpful !== 'boolean') {
+        return res.status(400).json({ message: "Invalid feedback data" });
+      }
+      
+      // Save the feedback
+      const feedback = await storage.createMessageFeedback(
+        userId,
+        messageId,
+        isHelpful,
+        comments
+      );
+      
+      // Return success
+      res.json({ 
+        success: true,
+        feedback
+      });
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      res.status(500).json({ message: "Failed to submit feedback" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
