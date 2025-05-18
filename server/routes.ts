@@ -152,14 +152,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Profile routes
   app.get('/api/profile', async (req: any, res) => {
     try {
+      console.log("Profile request - isAuthenticated:", req.isAuthenticated());
+      
       // Check if user is authenticated
       if (!req.isAuthenticated()) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const userId = req.user.claims.sub;
+      // Get user ID based on auth type
+      let userId;
+      
+      if (req.user.claims && req.user.claims.sub) {
+        // OAuth auth (Replit/Google)
+        userId = req.user.claims.sub;
+      } else if (req.user.id) {
+        // Email/password auth
+        userId = req.user.id;
+      } else {
+        console.error("Unknown user format in profile request:", req.user);
+        return res.status(500).json({ message: "Invalid session format" });
+      }
+      
+      console.log("Getting profile for user ID:", userId);
+      
       const user = await storage.getUser(userId);
-      res.json(user);
+      
+      if (!user) {
+        console.log("User not found in database");
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Return user without password
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error fetching profile:", error);
       res.status(500).json({ message: "Failed to fetch profile" });
