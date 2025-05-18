@@ -3,7 +3,8 @@ import {
   modules, type Module, type InsertModule,
   userProgress, type UserProgress, type InsertUserProgress,
   chatHistory, type ChatHistory, type InsertChatHistory,
-  knowledgeBaseEntries, type KnowledgeBaseEntry, type InsertKnowledgeBaseEntry
+  knowledgeBaseEntries, type KnowledgeBaseEntry, type InsertKnowledgeBaseEntry,
+  messageFeedback, type MessageFeedback, type InsertMessageFeedback
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -183,6 +184,28 @@ export class DatabaseStorage implements IStorage {
       .values(entry)
       .returning();
     return newEntry;
+  }
+
+  // Feedback operations
+  async createMessageFeedback(userId: string, messageId: string, isHelpful: boolean, comments?: string): Promise<MessageFeedback> {
+    const [feedback] = await db
+      .insert(messageFeedback)
+      .values({
+        userId,
+        messageId,
+        isHelpful,
+        comments
+      })
+      .returning();
+    return feedback;
+  }
+
+  async getMessageFeedback(messageId: string): Promise<MessageFeedback | undefined> {
+    const [feedback] = await db
+      .select()
+      .from(messageFeedback)
+      .where(eq(messageFeedback.messageId, messageId));
+    return feedback;
   }
 }
 
