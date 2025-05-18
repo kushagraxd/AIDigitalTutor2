@@ -35,7 +35,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Auth routes
+  // Auth routes - Get current user
   app.get('/api/auth/user', async (req: any, res) => {
     try {
       // Check if user is authenticated through Replit Auth
