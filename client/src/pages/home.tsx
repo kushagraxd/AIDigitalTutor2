@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Module, UserProgress } from "@shared/schema";
+import { Module } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import ModuleCard from "@/components/modules/ModuleCard";
 
@@ -10,43 +10,9 @@ export default function Home() {
   const [_, setLocation] = useLocation();
   
   // Fetch modules
-  const { data: modules, isLoading: modulesLoading } = useQuery<Module[]>({
+  const { data: modules, isLoading } = useQuery<Module[]>({
     queryKey: ["/api/modules"],
   });
-  
-  // Fetch user progress
-  const { data: progress, isLoading: progressLoading } = useQuery<UserProgress[]>({
-    queryKey: ["/api/progress"],
-    enabled: !!modules && !!user,
-  });
-  
-  const isLoading = modulesLoading || progressLoading;
-  
-  // Find current or most recent module
-  const findCurrentModule = () => {
-    if (!modules || !progress || modules.length === 0) return null;
-    
-    // Find incomplete modules
-    const incompleteModules = modules.filter(module => {
-      const moduleProgress = progress.find(p => p.moduleId === module.id);
-      return !moduleProgress?.completed;
-    });
-    
-    // If there are incomplete modules, find the one with the highest progress
-    if (incompleteModules.length > 0) {
-      // Sort by progress percentage (descending)
-      return incompleteModules.sort((a, b) => {
-        const progressA = progress.find(p => p.moduleId === a.id)?.percentComplete || 0;
-        const progressB = progress.find(p => p.moduleId === b.id)?.percentComplete || 0;
-        return progressB - progressA;
-      })[0];
-    }
-    
-    // If all modules are complete, return the first one
-    return modules[0];
-  };
-  
-  const currentModule = findCurrentModule();
   
   return (
     <div className="flex-grow overflow-auto p-6">

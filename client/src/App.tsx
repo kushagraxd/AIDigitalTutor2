@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect } from "react";
+import React, { Suspense } from "react";
 import { Switch, Route, useRoute } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -12,9 +12,8 @@ import Layout from "@/components/layout/Layout";
 import { useQuery } from "@tanstack/react-query";
 import ChatInterface from "@/components/chat/ChatInterface";
 import ModuleHeader from "@/components/modules/ModuleHeader";
-import ModuleProgress from "@/components/modules/ModuleProgress";
 import { useAuth } from "@/hooks/useAuth";
-import { Module, UserProgress } from "@shared/schema";
+import { Module } from "@shared/schema";
 import Profile from "@/pages/profile";
 
 function ModulePage() {
@@ -26,38 +25,10 @@ function ModulePage() {
   const { user } = useAuth();
   
   // Fetch module data
-  const { data: module, isLoading: moduleLoading } = useQuery<Module>({
+  const { data: module, isLoading } = useQuery<Module>({
     queryKey: [`/api/modules/${moduleId}`],
     enabled: !isNaN(moduleId)
   });
-  
-  // Fetch all modules for total count
-  const { data: allModules, isLoading: modulesLoading } = useQuery<Module[]>({
-    queryKey: ['/api/modules'],
-  });
-  
-  // Fetch user's progress for this specific module
-  const { data: progress, isLoading: progressLoading } = useQuery<UserProgress>({
-    queryKey: [`/api/progress/${moduleId}`],
-    enabled: !isNaN(moduleId) && !!user,
-    // If the progress isn't found, don't keep retrying
-    retry: false
-  });
-  
-  // Combine loading states
-  const isLoading = moduleLoading || modulesLoading;
-  
-  // Set up automatic progress refresh
-  useEffect(() => {
-    const progressRefreshInterval = setInterval(() => {
-      if (user && moduleId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/progress/${moduleId}`] });
-        queryClient.invalidateQueries({ queryKey: ['/api/progress'] });
-      }
-    }, 5000); // Refresh every 5 seconds
-    
-    return () => clearInterval(progressRefreshInterval);
-  }, [moduleId, user, queryClient]);
   
   if (isLoading) {
     return (
