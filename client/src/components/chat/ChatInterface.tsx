@@ -50,15 +50,19 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
   });
   
   // Fetch existing chat history for this module
-  const { data: chatHistory } = useQuery<ChatHistory[]>({
+  const { data: chatHistory, isSuccess: isHistoryLoaded } = useQuery<ChatHistory[]>({
     queryKey: [`/api/history/${moduleId}`],
     enabled: !!moduleId && !!user,
+    staleTime: 0, // Always refetch when navigating between modules
+    refetchOnWindowFocus: true, // Refresh when tab is focused
   });
 
   // Add welcome message on first load or load from chat history
   useEffect(() => {
-    if (!messages.length) {
+    // Only process if history is loaded (prevents flickering) and no messages yet
+    if (!messages.length && isHistoryLoaded) {
       if (chatHistory && chatHistory.length > 0) {
+        console.log("Loading chat history:", chatHistory.length, "messages");
         // Convert chat history to message format
         const formattedMessages: Message[] = [];
         for (const entry of chatHistory) {
@@ -77,16 +81,29 @@ export default function ChatInterface({ moduleId, module }: ChatInterfaceProps) 
             content: entry.answer,
             timestamp: new Date(entry.timestamp ?? Date.now()),
             markdown: true,
-            confidence: entry.confidenceScore ? Number(entry.confidenceScore) : undefined,
-            source: entry.source ? String(entry.source) : undefined
+            confidence: entry.confidenceScore ? Number(entry.confidenceScore) / 100 : undefined,
+            source: entry.source ?? undefined
           });
         }
         setMessages(formattedMessages);
+        
+        // Update progress based on chat history length - each pair of messages (Q&A) counts as one exchange
+        if (moduleId && user) {
+          const exchanges = Math.floor(chatHistory.length);
+          const percentComplete = Math.min(100, Math.max(10, exchanges * 10));
+          const completed = percentComplete >= 100;
+          
+          updateProgressMutation.mutate({
+            moduleId,
+            percentComplete,
+            completed
+          });
+        }
       } else {
         // No history, show welcome message
         const welcomeContent = `# Welcome to the ${module?.title || 'Digital Marketing'} module!
 
-I'm your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market.
+I'm Professor DigiMark, your AI Digital Marketing Professor, designed to help you understand digital marketing concepts and strategies specifically for the Indian market.
 
 ## How I can help you:
 - Ask me questions about ${module?.title || 'digital marketing'} topics
@@ -117,7 +134,7 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
         }
       }
     }
-  }, [chatHistory, messages.length, module, moduleId, updateProgressMutation, user]);
+  }, [chatHistory, isHistoryLoaded, messages.length, module, moduleId, updateProgressMutation, user]);
 
   // Scroll to bottom when messages change
   useEffect(() => {

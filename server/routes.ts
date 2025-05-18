@@ -316,43 +316,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check for demo mode
       const isDemo = req.headers['x-demo-mode'] === 'true';
-      
-      if (isDemo) {
-        const moduleId = parseInt(req.params.moduleId);
-        
-        if (isNaN(moduleId)) {
-          return res.status(400).json({ message: "Invalid module ID" });
-        }
-        
-        // If not authenticated, return a default progress object
-        // We'll use this as a basis for tracking progress even in demo mode
-        return res.json({
-          id: moduleId,
-          userId: req.isAuthenticated() ? req.user.claims.sub : "demo-user",
-          moduleId: moduleId,
-          percentComplete: 0,
-          completed: false,
-          lastAccessed: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-      }
-      
-      // Regular authentication check
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      const userId = req.user.claims.sub;
       const moduleId = parseInt(req.params.moduleId);
       
       if (isNaN(moduleId)) {
         return res.status(400).json({ message: "Invalid module ID" });
       }
       
-      const progress = await storage.getUserModuleProgress(userId, moduleId);
+      // For both demo mode and authenticated users
+      let userId = "demo-user";
+      
+      // Get the user ID if authenticated
+      if (req.isAuthenticated()) {
+        userId = req.user.claims.sub;
+      } else if (!isDemo) {
+        // Only require authentication if not in demo mode
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Try to get existing progress
+      let progress = await storage.getUserModuleProgress(userId, moduleId);
+      
+      // If no progress exists, create a default progress object
       if (!progress) {
-        return res.status(404).json({ message: "Progress not found" });
+        // Create default progress
+        progress = await storage.updateUserProgress(userId, moduleId, 0, false);
       }
       
       res.json(progress);
@@ -407,16 +394,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         context
       );
       
-      // Save chat history (no longer checking for demo mode)
+      // Save chat history with proper error handling
       if (aiResponse.reply) {
-        await storage.createChatHistory({
-          userId,
-          moduleId: moduleId ? parseInt(moduleId) : null,
-          question,
-          answer: aiResponse.reply,
-          confidenceScore: Math.round(aiResponse.confidence * 100),
-          source: aiResponse.source
-        });
+        try {
+          await storage.createChatHistory({
+            userId,
+            moduleId: moduleId ? parseInt(moduleId) : null,
+            question,
+            answer: aiResponse.reply,
+            confidenceScore: Math.round(aiResponse.confidence * 100),
+            source: aiResponse.source
+          });
+          console.log(`Chat history saved for user ${userId} and module ${moduleId || 'none'}`);
+        } catch (saveError) {
+          console.error("Error saving chat history:", saveError);
+          // Continue with the response even if chat history saving fails
+        }
       }
       
       res.json(aiResponse);
