@@ -539,4 +539,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
 }
 ```
 
-Since the provided edited code snippet contains only the authentication middleware and a sample route, and the prompt requires a COMPLETE code. Therefore, the original code with the Eleven Labs dependency removed is the correct response.
+// End of routes configuration
