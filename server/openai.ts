@@ -60,8 +60,12 @@ Adapt your teaching approach accordingly - be more conversational, check underst
     let moduleContext = "";
     if (moduleId) {
       moduleContext = `You are currently teaching module ${moduleId}. 
-      IMPORTANT: Stay strictly within the scope of this module. Do not introduce advanced concepts from other modules.
-      CRITICAL: Do not mention or teach about other modules unless explicitly asked. Focus only on completing THIS module fully.`;
+      STRICT MODULE FOCUS RULE: ONLY teach topics that belong to this specific module.
+      1. If student asks about topics from a different module, do NOT teach it
+      2. Instead say: "That topic is covered in another module. You can access it by going to that specific module."
+      3. Never teach content that belongs to other modules even if requested
+      4. Always stay within the scope of the current module's curriculum
+      5. Focus only on completing THIS module's topics fully`;
     }
     
     const systemPrompt = `
@@ -123,6 +127,7 @@ Adapt your teaching approach accordingly - be more conversational, check underst
       • The speak value must be plain text—no Markdown, URLs, or >90 words.
       
       ### Content Boundaries
+      • STRICT MODULE RULE: Only teach topics that belong to the current module. If asked about topics from other modules, reply: "That topic is covered in another module. Please navigate to that specific module to learn about it."
       • No personal data or sensitive info.
       • No "exam dump" of full textbook pages—summarise and cite.
       • If outside digital marketing scope, say politely: "That's beyond today's course."
