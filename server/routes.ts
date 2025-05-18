@@ -389,7 +389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Professor routes
-  app.post('/api/ai/chat', isAuthenticated, async (req: any, res) => {
+  app.post('/api/chat', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
