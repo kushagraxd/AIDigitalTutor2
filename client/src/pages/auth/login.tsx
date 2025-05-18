@@ -11,7 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 // Form schema for login
 const loginSchema = z.object({
@@ -89,11 +89,19 @@ export default function AuthPage() {
       if (response.ok) {
         const user = await response.json();
         console.log("Demo login successful:", user);
+        
+        // Refetch user data to update auth state
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        
         toast({
           title: "Login Successful",
           description: "You have been logged in with a demo account.",
         });
-        setLocation('/');
+        
+        // Delay navigation slightly to allow auth state to update
+        setTimeout(() => {
+          setLocation('/');
+        }, 500);
       } else {
         const error = await response.text();
         throw new Error(error || "Demo login failed");

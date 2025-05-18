@@ -193,24 +193,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post('/api/profile', async (req: any, res) => {
     try {
+      console.log("Profile update request received");
+      
       // Check if user is authenticated
       if (!req.isAuthenticated()) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const userId = req.user.claims.sub;
+      console.log("User authenticated, session:", req.user);
+      
+      // Get user ID based on auth method
+      let userId;
+      let existingClaims = {};
+      
+      if (req.user.claims && req.user.claims.sub) {
+        // OAuth authentication
+        userId = req.user.claims.sub;
+        existingClaims = {
+          email: req.user.claims.email,
+          firstName: req.user.claims.first_name,
+          lastName: req.user.claims.last_name,
+          profileImageUrl: req.user.claims.profile_image_url,
+        };
+      } else if (req.user.id) {
+        // Email/password authentication
+        userId = req.user.id;
+      } else {
+        console.error("Unknown user session format:", req.user);
+        return res.status(500).json({ message: "Invalid user session format" });
+      }
+      
+      console.log("Updating profile for user ID:", userId);
       
       // Get existing user data to preserve fields not updated by profile
       const existingUser = await storage.getUser(userId);
       
+      if (!existingUser) {
+        console.error("User not found in database:", userId);
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      console.log("Found existing user:", { id: existingUser.id, email: existingUser.email });
+      
+      // Create updated user data
       const userData = {
         id: userId,
-        // Preserve existing data
-        email: existingUser?.email || req.user.claims.email,
-        firstName: existingUser?.firstName || req.user.claims.first_name,
-        lastName: existingUser?.lastName || req.user.claims.last_name,
-        profileImageUrl: existingUser?.profileImageUrl || req.user.claims.profile_image_url,
-        // Update profile data
+        // Preserve existing database data
+        email: existingUser.email,
+        firstName: existingUser.firstName,
+        lastName: existingUser.lastName,
+        profileImageUrl: existingUser.profileImageUrl,
+        password: existingUser.password, // Keep existing password if any
+        // Update with OAuth claims if available (important for OAuth users)
+        ...existingClaims,
+        // Update profile data from request
         name: req.body.name,
         mobileNumber: req.body.mobileNumber,
         profession: req.body.profession,
@@ -221,8 +257,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         educationLevel: req.body.educationLevel,
       };
       
+      console.log("Updating user with data:", { 
+        id: userData.id, 
+        email: userData.email,
+        name: userData.name,
+        profession: userData.profession 
+      });
+      
       const updatedUser = await storage.upsertUser(userData);
-      res.json(updatedUser);
+      
+      // Remove sensitive data before returning
+      const { password, ...safeUser } = updatedUser;
+      res.json(safeUser);
     } catch (error) {
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
