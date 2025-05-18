@@ -57,7 +57,7 @@ export default function ModuleCard({ module, progress }: ModuleCardProps) {
           className="w-full" 
           onClick={() => {
             console.log(`Navigating to module: ${module.id}`);
-            setLocation(`/module/${module.id}`);
+            setLocation(`/modules/${module.id}`);
           }}
         >
           {percentComplete > 0 ? "Continue Learning" : "Start Learning"}
