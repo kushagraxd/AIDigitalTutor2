@@ -154,7 +154,7 @@ What specific aspect of ${module?.title || 'digital marketing'} would you like t
     try {
       // Prepare request object - Include module information if available
       const requestData = {
-        message: inputMessage,
+        question: inputMessage,
         moduleId: moduleId,
         previousMessages: messages.map(m => ({
           role: m.type === 'user' ? 'user' : 'assistant',
