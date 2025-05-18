@@ -10,9 +10,14 @@ import { log } from './vite';
 const apiKey = process.env.ELEVEN_LABS_API_KEY || '';
 log(`Initializing Eleven Labs with API key (${apiKey ? 'present' : 'missing'})`, 'elevenlabs');
 
-const elevenlabs = new ElevenLabs({
-  apiKey: apiKey,
-});
+let elevenlabs: ElevenLabs | null = null;
+if (apiKey) {
+  elevenlabs = new ElevenLabs({
+    apiKey: apiKey,
+  });
+} else {
+  log('Eleven Labs API key missing - TTS features will be disabled', 'elevenlabs');
+}
 
 // Default voice ID - Rachel voice is one of the most natural sounding
 const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel voice ID
