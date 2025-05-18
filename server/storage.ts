@@ -33,6 +33,10 @@ export interface IStorage {
   getKnowledgeBaseEntries(): Promise<KnowledgeBaseEntry[]>;
   getKnowledgeBaseEntriesByModule(moduleId: number): Promise<KnowledgeBaseEntry[]>;
   createKnowledgeBaseEntry(entry: InsertKnowledgeBaseEntry): Promise<KnowledgeBaseEntry>;
+  
+  // Feedback operations
+  createMessageFeedback(userId: string, messageId: string, isHelpful: boolean, comments?: string): Promise<MessageFeedback>;
+  getMessageFeedback(messageId: string): Promise<MessageFeedback | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {

@@ -125,3 +125,21 @@ export const insertKnowledgeBaseEntrySchema = createInsertSchema(knowledgeBaseEn
 
 export type InsertKnowledgeBaseEntry = z.infer<typeof insertKnowledgeBaseEntrySchema>;
 export type KnowledgeBaseEntry = typeof knowledgeBaseEntries.$inferSelect;
+
+// Message Feedback
+export const messageFeedback = pgTable("message_feedback", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  messageId: varchar("message_id").notNull(),
+  isHelpful: boolean("is_helpful").notNull(),
+  comments: text("comments"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const insertMessageFeedbackSchema = createInsertSchema(messageFeedback).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertMessageFeedback = z.infer<typeof insertMessageFeedbackSchema>;
+export type MessageFeedback = typeof messageFeedback.$inferSelect;

@@ -3,8 +3,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MarkdownRenderer } from "@/components/ui/md-renderer";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import FeedbackButtons from "./FeedbackButtons";
 
 interface ChatMessageProps {
   message: {
@@ -60,32 +59,8 @@ export default function ChatMessage({ message }: ChatMessageProps) {
                 {message.confidence !== undefined && ` (${Math.round(message.confidence * 100)}% confidence)`}
               </span>
             </span>
-            <div className="ml-auto flex space-x-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                      <span className="material-icons text-sm">thumb_up</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>This was helpful</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                      <span className="material-icons text-sm">thumb_down</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>This was not helpful</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            <div className="ml-auto">
+              <FeedbackButtons messageId={message.id} />
             </div>
           </div>
         )}
