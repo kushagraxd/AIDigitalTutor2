@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 
-type Theme = 'light' | 'dark';
+// Only support light theme now
+type Theme = 'light';
 
 interface ThemeContextType {
   theme: Theme;
@@ -10,32 +11,22 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    // Check for saved theme in localStorage
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    
-    // If user has saved preference, use it
-    if (savedTheme) {
-      return savedTheme;
-    }
-    
-    // Otherwise check for system preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    return prefersDark ? 'dark' : 'light';
-  });
+  // Hardcoded to light theme only
+  const theme: Theme = 'light';
 
-  // Update the data-theme attribute on the document element when theme changes
+  // Always set light theme on document element
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    root.classList.remove('dark');
+    root.classList.add('light');
+    localStorage.setItem('theme', 'light');
+  }, []);
 
   const value = {
     theme,
-    setTheme: (newTheme: Theme) => {
-      setTheme(newTheme);
+    // No-op function since we only support light theme
+    setTheme: (_: Theme) => {
+      // Do nothing, we only support light theme
     },
   };
 

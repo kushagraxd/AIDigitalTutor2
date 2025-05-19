@@ -12,8 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { useTheme } from "@/components/theme/ThemeProvider";
-import { Moon, Sun } from "lucide-react";
+// Removed theme imports as app is now white-only
 
 // Form schema for user profile
 const profileSchema = z.object({
@@ -330,45 +329,7 @@ export default function ProfilePage() {
           </CardFooter>
         </Card>
 
-        {/* App Preferences Card */}
-        <Card className="mb-10">
-          <CardHeader className="pb-2">
-            <CardTitle>App Preferences</CardTitle>
-            <CardDescription>
-              Customize your application experience
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-sm font-medium">Theme</h3>
-                  <p className="text-sm text-neutral-gray">Choose between light and dark mode</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant={theme === 'light' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setTheme('light')}
-                    className="flex items-center gap-1"
-                  >
-                    <Sun className="h-4 w-4" />
-                    <span>Light</span>
-                  </Button>
-                  <Button
-                    variant={theme === 'dark' ? 'default' : 'outline'} 
-                    size="sm"
-                    onClick={() => setTheme('dark')}
-                    className="flex items-center gap-1"
-                  >
-                    <Moon className="h-4 w-4" />
-                    <span>Dark</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Removed App Preferences Card with theme toggle as app is now white-only */}
       </div>
     </div>
   );
