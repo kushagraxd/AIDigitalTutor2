@@ -33,7 +33,6 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export default function ProfilePage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
 
   // Query to get user profile data
   const { data: profile, isLoading: profileLoading } = useQuery({
