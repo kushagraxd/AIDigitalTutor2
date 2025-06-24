@@ -1,3 +1,5 @@
+import 'dotenv/config';
+console.log("DATABASE_URL is:", process.env.DATABASE_URL);
 import express from "express";
 import session from "express-session";
 import { setupVite, serveStatic, log } from "./vite";
