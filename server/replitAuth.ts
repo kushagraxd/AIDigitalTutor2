@@ -1,7 +1,6 @@
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-
 import passport from "passport";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
@@ -9,6 +8,7 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
+// Check required environment variables
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
 }
@@ -17,10 +17,10 @@ const getOidcConfig = memoize(
   async () => {
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
-      process.env.REPL_ID!
+      process.env.REPL_ID!,
     );
   },
-  { maxAge: 3600 * 1000 }
+  { maxAge: 3600 * 1000 },
 );
 
 export function getSession() {
@@ -47,7 +47,7 @@ export function getSession() {
 
 function updateUserSession(
   user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
+  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
 ) {
   user.claims = tokens.claims();
   user.access_token = tokens.access_token;
@@ -55,9 +55,7 @@ function updateUserSession(
   user.expires_at = user.claims?.exp;
 }
 
-async function upsertUser(
-  claims: any,
-) {
+async function upsertUser(claims: any) {
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
@@ -78,7 +76,7 @@ export async function setupAuth(app: Express) {
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
+    verified: passport.AuthenticateCallback,
   ) => {
     const user = {};
     updateUserSession(user, tokens);
@@ -86,8 +84,7 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
+  for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
@@ -102,71 +99,73 @@ export async function setupAuth(app: Express) {
 
   // Configure Google Auth
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    // Get the first domain from REPLIT_DOMAINS for the callback URL
     const primaryDomain = process.env.REPLIT_DOMAINS!.split(",")[0];
     const callbackURL = `https://${primaryDomain}/api/auth/google/callback`;
-    
+
     console.log("Setting up Google OAuth with callback URL:", callbackURL);
-    
-    passport.use(new GoogleStrategy({
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: callbackURL,
-        proxy: true
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        try {
-          console.log("Google auth callback received for:", profile.displayName);
-          
-          // Create a consistent user ID for Google users
-          const userId = `google-${profile.id}`;
-          
-          // Create or update user from Google profile with required profile fields
-          // This ensures the user entity has all the fields needed for the profile page
-          const user = await storage.upsertUser({
-            id: userId,
-            email: profile.emails?.[0]?.value,
-            firstName: profile.name?.givenName,
-            lastName: profile.name?.familyName,
-            profileImageUrl: profile.photos?.[0]?.value,
-            // Set default values for required profile fields
-            name: profile.displayName || `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim(),
-            mobileNumber: "",  // Will be updated in profile
-            profession: "",    // Will be updated in profile
-            gender: "",        // Will be updated in profile
-            // Optional fields
-            collegeOrUniversity: "",
-            interests: "",
-            goals: "", 
-            educationLevel: ""
-          });
-          
-          console.log("User saved/updated in database:", userId);
-          
-          // Create a user session object similar to Replit Auth for consistency
-          const userSession = {
-            claims: {
-              sub: userId,
+
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: callbackURL,
+          proxy: true,
+        },
+        async (accessToken, refreshToken, profile, done) => {
+          try {
+            console.log(
+              "Google auth callback received for:",
+              profile.displayName,
+            );
+            const userId = `google-${profile.id}`;
+            const user = await storage.upsertUser({
+              id: userId,
               email: profile.emails?.[0]?.value,
-              first_name: profile.name?.givenName,
-              last_name: profile.name?.familyName,
-              profile_image_url: profile.photos?.[0]?.value,
-              iat: Math.floor(Date.now() / 1000),
-              exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours
-            },
-            access_token: accessToken,
-            refresh_token: refreshToken
-          };
-          
-          return done(null, userSession);
-        } catch (error) {
-          console.error("Error in Google authentication:", error);
-          return done(error as Error);
-        }
-      }
-    ));
+              firstName: profile.name?.givenName,
+              lastName: profile.name?.familyName,
+              profileImageUrl: profile.photos?.[0]?.value,
+              // Default values for required fields
+              name:
+                profile.displayName ||
+                `${profile.name?.givenName || ""} ${profile.name?.familyName || ""}`.trim(),
+              mobileNumber: "",
+              profession: "",
+              gender: "",
+              collegeOrUniversity: "",
+              interests: "",
+              goals: "",
+              educationLevel: "",
+            });
+
+            console.log("User saved/updated in database:", userId);
+
+            const userSession = {
+              claims: {
+                sub: userId,
+                email: profile.emails?.[0]?.value,
+                first_name: profile.name?.givenName,
+                last_name: profile.name?.familyName,
+                profile_image_url: profile.photos?.[0]?.value,
+                iat: Math.floor(Date.now() / 1000),
+                exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
+              },
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            };
+
+            return done(null, userSession);
+          } catch (error) {
+            console.error("Error in Google authentication:", error);
+            return done(error as Error);
+          }
+        },
+      ),
+    );
   } else {
-    console.warn("Google OAuth credentials not found. Google login will be disabled.");
+    console.warn(
+      "Google OAuth credentials not found. Google login will be disabled.",
+    );
   }
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
@@ -190,61 +189,61 @@ export async function setupAuth(app: Express) {
   // Google Auth routes
   app.get("/api/auth/google", (req, res, next) => {
     console.log("Google login route hit with hostname:", req.hostname);
-    
-    // Log Google auth credentials status
+
     console.log("Google auth credentials available:", {
       clientId: !!process.env.GOOGLE_CLIENT_ID,
-      clientSecret: !!process.env.GOOGLE_CLIENT_SECRET
+      clientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
     });
-    
-    passport.authenticate("google", { 
-      scope: ["profile", "email"]
+
+    passport.authenticate("google", {
+      scope: ["profile", "email"],
     })(req, res, next);
   });
 
   app.get("/api/auth/google/callback", (req, res, next) => {
     console.log("Google callback route hit with hostname:", req.hostname);
-    
-    passport.authenticate("google", {
-      failureRedirect: "/auth"
-    }, (err, user, info) => {
-      if (err) {
-        console.error("Google auth error:", err);
-        return res.redirect("/auth?error=google_auth_error");
-      }
-      
-      if (!user) {
-        console.error("Google auth failed:", info);
-        return res.redirect("/auth?error=google_user_missing");
-      }
-      
-      // Log the user in
-      req.login(user, (loginErr) => {
-        if (loginErr) {
-          console.error("Google login error:", loginErr);
-          return res.redirect("/auth?error=session_error");
+
+    passport.authenticate(
+      "google",
+      {
+        failureRedirect: "/auth",
+      },
+      (err, user, info) => {
+        if (err) {
+          console.error("Google auth error:", err);
+          return res.redirect("/auth?error=google_auth_error");
         }
-        
-        console.log("Google login successful, redirecting to home");
-        
-        // Force a small delay to ensure session is saved
-        setTimeout(() => {
-          res.redirect("/");
-        }, 100);
-      });
-    })(req, res, next);
+        if (!user) {
+          console.error("Google auth failed:", info);
+          return res.redirect("/auth?error=google_user_missing");
+        }
+        req.login(user, (loginErr) => {
+          if (loginErr) {
+            console.error("Google login error:", loginErr);
+            return res.redirect("/auth?error=session_error");
+          }
+          console.log("Google login successful, redirecting to home");
+          setTimeout(() => {
+            res.redirect("/");
+          }, 100);
+        });
+      },
+    )(req, res, next);
   });
 
   // Shared logout route
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
       // If it was a Replit login, use their logout URL
-      if (req.user && (req.user as any).claims?.iss === "https://replit.com/oidc") {
+      if (
+        req.user &&
+        (req.user as any).claims?.iss === "https://replit.com/oidc"
+      ) {
         res.redirect(
           client.buildEndSessionUrl(config, {
             client_id: process.env.REPL_ID!,
             post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-          }).href
+          }).href,
         );
       } else {
         // Otherwise just redirect to home
